@@ -1,0 +1,28 @@
+{
+  "products": [
+    {
+      "id": "1",
+      "name": "Картофель, 1 кг",
+      "price": 350,
+      "image": "https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=600&q=80"
+    },
+    {
+      "id": "2",
+      "name": "Мёд натуральный, 1 л",
+      "price": 4500,
+      "image": "https://images.unsplash.com/photo-1587049352851-8d4e89133924?auto=format&fit=crop&w=600&q=80"
+    },
+    {
+      "id": "3",
+      "name": "Молоко фермерское, 1 л",
+      "price": 600,
+      "image": "https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=600&q=80"
+    },
+    {
+      "id": "4",
+      "name": "Яблоки, 1 кг",
+      "price": 700,
+      "image": "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&w=600&q=80"
+    }
+  ]
+}
