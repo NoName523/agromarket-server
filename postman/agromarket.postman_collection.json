@@ -1,0 +1,566 @@
+{
+  "info": {
+    "name": "AgroMarket API",
+    "description": "ЛР №6, часть 7. Collection v2.1. Запускать все 16 запросов по порядку, одну итерацию за раз, только после разрешения на создание тестовых данных. baseUrl не содержит /api. Переменные не должны переопределяться одноимёнными переменными окружения/данных. Созданный товар удаляется запросом 14. Если запуск прерван, проверьте productId и точное testName перед ручным удалением только своего товара.\n\nУ API нет DELETE заявок. Каждая итерация оставляет одну тестовую заявку. Запрос 09 сохраняет её точные id/name/email в переменную cleanupOrders (JSON-массив). Сохраните актуальное значение cleanupOrders после Runner до закрытия/повторного импорта коллекции. Не публикуйте экспорт с результатами запусков.\n\nКонтролируемая очистка после отдельного подтверждения: подключиться к agromarket, BEGIN, SELECT id,name,email FROM public.orders WHERE id=$1 AND name=$2 AND email=$3 FOR UPDATE; сверить ровно одну строку с записью cleanupOrders; DELETE FROM public.orders WHERE id=$1 AND name=$2 AND email=$3 RETURNING id; проверить rowCount=1, затем COMMIT. При несовпадении — ROLLBACK. Повторить только для подтверждённых записей журнала. Значения передавать параметрами через pg. Не удалять по префиксу имени или по всем заявкам. После успешной очистки убрать соответствующую запись из cleanupOrders.\n\nВ методичке 11 запросов; здесь 16, чтобы дополнительно покрыть список товаров, список заявок, отдельную проверку отсутствующего названия, недопустимый статус и некорректный ID. Динамические запросы используют /:id. Автоматической очистки заявок и публичного DELETE /orders нет.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "productId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "orderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "testName",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "testEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cleanupOrders",
+      "value": "[]",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 — Health и подготовка запуска",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const runId = pm.variables.replaceIn('{{$guid}}');",
+              "pm.collectionVariables.set('testName', 'lab6-postman-' + runId);",
+              "pm.collectionVariables.set('testEmail', 'lab6-' + runId + '@example.invalid');",
+              "pm.collectionVariables.unset('productId'); pm.collectionVariables.unset('orderId');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+              "pm.test(\"JSON-ответ\", () => { pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'); pm.expect(pm.response.json()).to.not.equal(null); });",
+              "pm.test(\"API и БД доступны\", () => { const b=pm.response.json(); pm.expect(b.status).to.eql('ok'); pm.expect(b.db).to.eql('connected'); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/health"
+      }
+    },
+    {
+      "name": "02 — Список товаров",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+              "pm.test(\"JSON-ответ\", () => { pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'); pm.expect(pm.response.json()).to.not.equal(null); });",
+              "pm.test(\"Массив товаров\", () => { pm.expect(pm.response.json()).to.be.an('array'); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/products"
+      }
+    },
+    {
+      "name": "03 — Поиск товаров",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+              "pm.test(\"JSON-ответ\", () => { pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'); pm.expect(pm.response.json()).to.not.equal(null); });",
+              "pm.test(\"Поиск молока\", () => { const b=pm.response.json(); pm.expect(b).to.be.an('array').and.not.empty; b.forEach(p=>pm.expect(p.name.toLowerCase()).to.include('мол')); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/products?search=%D0%BC%D0%BE%D0%BB"
+      }
+    },
+    {
+      "name": "04 — Создать тестовый товар",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => { pm.response.to.have.status(201); });",
+              "pm.test(\"JSON-ответ\", () => { pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'); pm.expect(pm.response.json()).to.not.equal(null); });",
+              "pm.test(\"Созданный товар\", () => { const b=pm.response.json(); pm.expect(b.id).to.be.a('number').above(4); pm.expect(b.name).to.eql(pm.collectionVariables.get('testName')); pm.expect(b.price).to.eql(100); });",
+              "const b=pm.response.json(); if(pm.response.code===201 && Number.isInteger(b.id) && b.id>4 && b.name===pm.collectionVariables.get('testName')) pm.collectionVariables.set('productId', b.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/products",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{testName}}\",\n  \"price\": 100,\n  \"category\": \"lab6-test\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "05 — Получить созданный товар",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const id = pm.collectionVariables.get('productId'); if (!/^[1-9]\\d*$/.test(String(id)) || Number(id) <= 4) { pm.execution.skipRequest(); throw new Error('Нет ID тестовой записи текущего запуска'); } pm.variables.set('productId', id);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+              "pm.test(\"JSON-ответ\", () => { pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'); pm.expect(pm.response.json()).to.not.equal(null); });",
+              "pm.test(\"ID и имя товара\", () => { const b=pm.response.json(); pm.expect(b.id).to.eql(Number(pm.collectionVariables.get('productId'))); pm.expect(b.name).to.eql(pm.collectionVariables.get('testName')); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/products/{{productId}}"
+      }
+    },
+    {
+      "name": "06 — Изменить товар",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const id = pm.collectionVariables.get('productId'); if (!/^[1-9]\\d*$/.test(String(id)) || Number(id) <= 4) { pm.execution.skipRequest(); throw new Error('Нет ID тестовой записи текущего запуска'); } pm.variables.set('productId', id);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+              "pm.test(\"JSON-ответ\", () => { pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'); pm.expect(pm.response.json()).to.not.equal(null); });",
+              "pm.test(\"Товар обновлён\", () => { const b=pm.response.json(); pm.expect(b.id).to.eql(Number(pm.collectionVariables.get('productId'))); pm.expect(b.name).to.eql(pm.collectionVariables.get('testName')+' updated'); pm.expect(b.price).to.eql(150); pm.expect(b.category).to.equal(null); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/products/{{productId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{testName}} updated\",\n  \"price\": 150\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "07 — Отрицательная цена",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => { pm.response.to.have.status(400); });",
+              "pm.test(\"JSON-ответ\", () => { pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'); pm.expect(pm.response.json()).to.not.equal(null); });",
+              "pm.test(\"JSON-ошибка\", () => { pm.expect(pm.response.json().error).to.be.a('string').and.not.empty; });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/products",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{testName}}\",\n  \"price\": -5\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "08 — Отсутствует название",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => { pm.response.to.have.status(400); });",
+              "pm.test(\"JSON-ответ\", () => { pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'); pm.expect(pm.response.json()).to.not.equal(null); });",
+              "pm.test(\"JSON-ошибка\", () => { pm.expect(pm.response.json().error).to.be.a('string').and.not.empty; });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/products",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"price\": 100\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "09 — Создать тестовую заявку",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => { pm.response.to.have.status(201); });",
+              "pm.test(\"JSON-ответ\", () => { pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'); pm.expect(pm.response.json()).to.not.equal(null); });",
+              "pm.test(\"Заявка создана\", () => { const b=pm.response.json(); pm.expect(b.id).to.be.a('number').above(0); pm.expect(b.name).to.eql(pm.collectionVariables.get('testName')); pm.expect(b.email).to.eql(pm.collectionVariables.get('testEmail')); pm.expect(b.status).to.eql('new'); pm.expect(b.quantity).to.eql(20); });",
+              "const b=pm.response.json(); if(pm.response.code===201 && Number.isInteger(b.id) && b.id>0 && b.name===pm.collectionVariables.get('testName') && b.email===pm.collectionVariables.get('testEmail')) { pm.collectionVariables.set('orderId',b.id); const ledger=JSON.parse(pm.collectionVariables.get('cleanupOrders') || '[]'); ledger.push({id:b.id,name:b.name,email:b.email}); pm.collectionVariables.set('cleanupOrders',JSON.stringify(ledger)); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/orders",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{testName}}\",\n  \"email\": \"{{testEmail}}\",\n  \"quantity\": 20\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "10 — Список заявок",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const id = pm.collectionVariables.get('orderId'); if (!/^[1-9]\\d*$/.test(String(id))) { pm.execution.skipRequest(); throw new Error('Нет ID тестовой записи текущего запуска'); } pm.variables.set('orderId', id);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+              "pm.test(\"JSON-ответ\", () => { pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'); pm.expect(pm.response.json()).to.not.equal(null); });",
+              "pm.test(\"Созданная заявка в массиве\", () => { const b=pm.response.json(); pm.expect(b).to.be.an('array'); const o=b.find(x=>x.id===Number(pm.collectionVariables.get('orderId'))); pm.expect(o).to.be.an('object'); pm.expect(o.email).to.eql(pm.collectionVariables.get('testEmail')); pm.expect(o).to.have.property('product_name'); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/orders"
+      }
+    },
+    {
+      "name": "11 — Заявка меньше 10 кг",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => { pm.response.to.have.status(400); });",
+              "pm.test(\"JSON-ответ\", () => { pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'); pm.expect(pm.response.json()).to.not.equal(null); });",
+              "pm.test(\"JSON-ошибка\", () => { pm.expect(pm.response.json().error).to.be.a('string').and.not.empty; });",
+              "pm.test(\"Минимум 10 кг\", () => { pm.expect(pm.response.json().error).to.include('10 кг'); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/orders",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{testName}}\",\n  \"email\": \"{{testEmail}}\",\n  \"quantity\": 5\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "12 — Изменить статус заявки",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const id = pm.collectionVariables.get('orderId'); if (!/^[1-9]\\d*$/.test(String(id))) { pm.execution.skipRequest(); throw new Error('Нет ID тестовой записи текущего запуска'); } pm.variables.set('orderId', id);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+              "pm.test(\"JSON-ответ\", () => { pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'); pm.expect(pm.response.json()).to.not.equal(null); });",
+              "pm.test(\"Статус изменён\", () => { const b=pm.response.json(); pm.expect(b.id).to.eql(Number(pm.collectionVariables.get('orderId'))); pm.expect(b.status).to.eql('processing'); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/orders/{{orderId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"processing\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "13 — Недопустимый статус",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const id = pm.collectionVariables.get('orderId'); if (!/^[1-9]\\d*$/.test(String(id))) { pm.execution.skipRequest(); throw new Error('Нет ID тестовой записи текущего запуска'); } pm.variables.set('orderId', id);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => { pm.response.to.have.status(400); });",
+              "pm.test(\"JSON-ответ\", () => { pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'); pm.expect(pm.response.json()).to.not.equal(null); });",
+              "pm.test(\"JSON-ошибка\", () => { pm.expect(pm.response.json().error).to.be.a('string').and.not.empty; });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/orders/{{orderId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"lost\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "14 — Удалить тестовый товар",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const id = pm.collectionVariables.get('productId'); if (!/^[1-9]\\d*$/.test(String(id)) || Number(id) <= 4) { pm.execution.skipRequest(); throw new Error('Нет ID тестовой записи текущего запуска'); } pm.variables.set('productId', id);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", () => { pm.response.to.have.status(204); });",
+              "pm.test(\"Пустое тело\", () => { pm.expect(pm.response.text()).to.eql(''); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/products/{{productId}}"
+      }
+    },
+    {
+      "name": "15 — Удалённый товар",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const id = pm.collectionVariables.get('productId'); if (!/^[1-9]\\d*$/.test(String(id)) || Number(id) <= 4) { pm.execution.skipRequest(); throw new Error('Нет ID тестовой записи текущего запуска'); } pm.variables.set('productId', id);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", () => { pm.response.to.have.status(404); });",
+              "pm.test(\"JSON-ответ\", () => { pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'); pm.expect(pm.response.json()).to.not.equal(null); });",
+              "pm.test(\"JSON-ошибка\", () => { pm.expect(pm.response.json().error).to.be.a('string').and.not.empty; });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/products/{{productId}}"
+      }
+    },
+    {
+      "name": "16 — Некорректный ID",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => { pm.response.to.have.status(400); });",
+              "pm.test(\"JSON-ответ\", () => { pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'); pm.expect(pm.response.json()).to.not.equal(null); });",
+              "pm.test(\"JSON-ошибка\", () => { pm.expect(pm.response.json().error).to.be.a('string').and.not.empty; });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/products/abc"
+      }
+    }
+  ]
+}
