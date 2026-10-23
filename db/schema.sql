@@ -10,9 +10,19 @@ CREATE TABLE products (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE users (
+  id            SERIAL PRIMARY KEY,
+  name          TEXT        NOT NULL,
+  email         TEXT        NOT NULL UNIQUE,
+  password_hash TEXT        NOT NULL,
+  role          TEXT        NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE orders (
   id            SERIAL PRIMARY KEY,
   product_id    INTEGER REFERENCES products(id) ON DELETE SET NULL,
+  user_id       INTEGER REFERENCES users(id) ON DELETE SET NULL,
   name          TEXT    NOT NULL,
   email         TEXT    NOT NULL,
   phone         TEXT,

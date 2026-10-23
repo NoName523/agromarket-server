@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { pool } from '../db/pool.js';
+import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -109,7 +110,7 @@ router.get('/:id', async (req, res) => {
   res.json(rows[0]);
 });
 
-router.post('/', async (req, res) => {
+router.post('/', requireAuth, requireRole('admin'), async (req, res) => {
   const error = validateProduct(req.body);
   if (error) return res.status(400).json({ error });
 
@@ -121,7 +122,7 @@ router.post('/', async (req, res) => {
   res.status(201).json(rows[0]);
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAuth, requireRole('admin'), async (req, res) => {
   if (!validId(req.params.id)) {
     return res.status(400).json({ error: 'ID должен быть положительным целым числом в диапазоне INTEGER' });
   }
@@ -138,7 +139,7 @@ router.put('/:id', async (req, res) => {
   res.json(rows[0]);
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAuth, requireRole('admin'), async (req, res) => {
   if (!validId(req.params.id)) {
     return res.status(400).json({ error: 'ID должен быть положительным целым числом в диапазоне INTEGER' });
   }

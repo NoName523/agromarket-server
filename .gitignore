@@ -1,2 +1,13 @@
 node_modules
 .env
+.env.*
+!.env.example
+*.dump
+*.backup
+*.pgdump
+*.sql.gz
+# These local Postman captures contain visible credentials or JWT data.
+screenshots/lab7-login-*.png
+screenshots/lab7-register-*.png
+screenshots/lab7-admin-orders-200.png
+screenshots/lab7-user-403.png
