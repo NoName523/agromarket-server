@@ -8,7 +8,7 @@ process.env.JWT_SECRET = randomBytes(64).toString('base64url');
 process.env.JWT_EXPIRES_IN = '2h';
 
 const { pool } = await import('../db/pool.js');
-const { default: app } = await import('../server.js');
+const { default: app } = await import('../app.js');
 
 test('бонусы и HTTP-защита работают с моками без PostgreSQL', async () => {
   const originalQuery = pool.query;

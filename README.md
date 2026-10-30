@@ -1,3 +1,5 @@
+![CI](https://github.com/NoName523/agromarket-server/actions/workflows/ci.yml/badge.svg)
+
 # АгроМаркет API
 
 Backend интернет-магазина «АгроМаркет». В лабораторной №5 API работал с локальными данными; в лабораторной №6 каталог и заявки переведены на PostgreSQL. Ниже сохранены материалы предыдущей лабораторной и добавлена актуальная документация проекта.
@@ -444,3 +446,42 @@ Postman и задайте в нём `userEmail`, `userPassword`, `adminEmail`,
 Старые снимки входа и регистрации с открытыми паролями или JWT намеренно не
 включены. Backend-тесты с моками прошли: 3 из 3. `npm run lint` и `npm run build`
 frontend также прошли. Изменяющие CRUD-проверки на рабочей БД не запускались.
+
+## Lab 8: tests, CI, and Git workflow
+
+### Run the API tests
+
+Use PostgreSQL 16 or newer and create a dedicated database named `agromarket_test`. Copy `.env` to `.env.test`; keep the existing VMware host, port, user, and password, changing only the database name. The test setup verifies both the configured database name and PostgreSQL's `current_database()` before `db:init` can reset the test schema. `db:init` refuses every database except `agromarket_test`. For this VMware setup, `pg_hba.conf` must also permit `agromarket_user` from the Windows host (192.168.174.1) to `agromarket_test`; duplicate the existing working `agromarket` rule with only the database name changed, then reload PostgreSQL.
+
+```bash
+npm ci
+npm test
+npm run test:watch
+npm run coverage
+```
+
+Coverage reports are written to `coverage/` and are ignored by Git. The latest verified local report is recorded in the Lab 8 results below.
+
+### GitHub Flow and commits
+
+Create a `feature/...` or `fix/...` branch from `main`, make focused changes, run tests, and open a Pull Request. Merge after CI passes and a reviewer approves; use Squash and merge. Protect `main` with a required Pull Request, one approval, the `test` status check, and blocked force pushes.
+
+Use Conventional Commits, for example `feat: add product search`, `fix: return 404 for missing order`, `test: auth and access control`, `refactor: split app.js and server.js`, `ci: run tests in GitHub Actions`, and `docs: testing and git workflow in README`.
+
+### Lab 8 answers
+
+- Admin-role regression: the passing access tests cover no token (401), invalid JWT (401), and a regular user. If `requireRole` is removed only from `POST /api/products`, the regular-user create assertion is the one expected to fail (it receives 201 instead of 403); `requireAuth` still enforces 401. The deliberate code-removal experiment was not performed.
+- Coverage: **Lines 69.86%, Statements 67.24%, Branches 56.55%, Functions 80.64%**. `routes/orders.js:30` is uncovered because no test sends an invalid `status` query to the administrator order-list route. `middleware/logger.js` is 0% by design: the app skips request logging when `NODE_ENV=test`.
+- The `requireRole` unit test calls one middleware function with `vi.fn()` mocks and no HTTP server or database. `access.test.js` sends HTTP requests through Express, JWT verification, route middleware, and PostgreSQL.
+- Code-review feedback received: **fill after your partner reviews the PR**.
+- Comments left on the partner's PR: **fill after you review the partner's PR**.
+- AI was used to prepare implementation and tests. Results above distinguish completed checks from blocked integration tests.
+
+### Local experiment record
+
+- Backend `npm test`: **32 passed, 0 failed** (3 existing `node:test` checks and 29 Vitest cases).
+- Backend `npm run coverage`: **29 passed, 0 failed**; Lines 69.86%, Statements 67.24%, Branches 56.55%, Functions 80.64%.
+- Red CI experiment: use a temporary feature branch, make one test expectation fail, confirm the check is red and merge is blocked, then restore the expectation and confirm the check is green. Do not leave the failing test in the final branch.
+- Frontend checks: `npm run lint`, `npm run build`, and `npm test`.
+
+For the real collaborator review, branch protection, and safe merge-conflict exercise, see [the Lab 8 GitHub steps](./docs/lab8-github-manual.md).
