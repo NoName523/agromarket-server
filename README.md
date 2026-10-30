@@ -485,3 +485,9 @@ Use Conventional Commits, for example `feat: add product search`, `fix: return 4
 - Frontend checks: `npm run lint`, `npm run build`, and `npm test`.
 
 For the real collaborator review, branch protection, and safe merge-conflict exercise, see [the Lab 8 GitHub steps](./docs/lab8-github-manual.md).
+## Скриншоты ЛР8
+
+![Результаты backend-тестов](./screenshots/lab8/lab8-backend-tests.png)
+![Отчёт покрытия тестами](./screenshots/lab8/lab8-backend-coverage.png)
+![Успешный Backend CI в GitHub Actions](./screenshots/lab8/lab8-backend-ci-green.png)
+![Успешно объединённый Pull Request](./screenshots/lab8/lab8-backend-pr-merged.png)
