@@ -18,8 +18,11 @@ export function requireAuth(req, res, next) {
   let payload;
   try {
     payload = jwt.verify(match[1], jwtSecret, { algorithms: ['HS256'] });
-  } catch {
-    return res.status(401).json({ error: 'Недействительный токен' });
+  } catch (error) {
+    const message = error?.name === 'TokenExpiredError'
+      ? 'Срок действия токена истёк'
+      : 'Недействительный токен';
+    return res.status(401).json({ error: message });
   }
 
   const id = typeof payload === 'object' && payload !== null &&
