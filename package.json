@@ -12,6 +12,7 @@
     "dev": "node --watch server.js",
     "start": "node server.js",
     "db": "node db/migrate.js",
+    "db:migrate": "node db/migrate.js",
     "db:init": "node db/test-init.js",
     "smoke": "node scripts/smoke.js",
     "db:admin": "node db/create-admin.js",

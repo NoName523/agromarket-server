@@ -3,6 +3,7 @@ const PRODUCTION_CONFIRMATION = 'I_ACKNOWLEDGE_PRODUCTION_SCHEMA_MIGRATION';
 export function assertSafeMigrationTarget({
   databaseUrl,
   nodeEnv = process.env.NODE_ENV,
+  command = process.env.npm_lifecycle_event,
   confirmation = process.env.CONFIRM_NEON_PRODUCTION_MIGRATION,
 }) {
   if (!databaseUrl) throw new Error('DATABASE_URL is required.');
@@ -13,8 +14,8 @@ export function assertSafeMigrationTarget({
 
   if (nodeEnv === 'production') {
     const neonHost = hostname.endsWith('.neon.tech') && hostname.length > '.neon.tech'.length;
-    if (!neonHost || confirmation !== PRODUCTION_CONFIRMATION) {
-      throw new Error('Production migration requires a Neon host and CONFIRM_NEON_PRODUCTION_MIGRATION=I_ACKNOWLEDGE_PRODUCTION_SCHEMA_MIGRATION.');
+    if (command !== 'db:migrate' || !neonHost || confirmation !== PRODUCTION_CONFIRMATION) {
+      throw new Error('Production Neon migrations require npm run db:migrate and CONFIRM_NEON_PRODUCTION_MIGRATION=I_ACKNOWLEDGE_PRODUCTION_SCHEMA_MIGRATION.');
     }
     return database;
   }
