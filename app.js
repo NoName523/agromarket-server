@@ -9,9 +9,15 @@ import { logger } from './middleware/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
+app.set('trust proxy', 1);
 app.use(helmet());
+const corsOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+  .split(',').map((origin) => origin.trim()).filter(Boolean);
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin(origin, callback) {
+    if (!origin || corsOrigins.includes(origin)) return callback(null, true);
+    return callback(null, false);
+  },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
@@ -22,7 +28,8 @@ app.get('/', (req, res) => res.send('AgroMarket API is running'));
 
 app.get('/api/health', async (req, res) => {
   await pool.query('SELECT 1');
-  res.json({ status: 'ok', db: 'connected', time: new Date().toISOString() });
+  const commit = process.env.RENDER_GIT_COMMIT;
+  res.json({ status: 'ok', db: 'connected', version: commit?.slice(0, 7) || 'local' });
 });
 
 app.get('/api/about', (req, res) => {
