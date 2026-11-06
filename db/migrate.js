@@ -1,19 +1,7 @@
-﻿import 'dotenv/config';
+import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import { pool } from './pool.js';
-
-function assertSafeTarget(rawUrl) {
-  if (!rawUrl) throw new Error('DATABASE_URL is required.');
-  const url = new URL(rawUrl);
-  const database = decodeURIComponent(url.pathname.slice(1));
-  const localHost = ['localhost', '127.0.0.1', '::1', '192.168.174.10'].includes(url.hostname);
-  const testDatabase = database === 'agromarket_test';
-  const vmDatabase = database === 'agromarket' && url.hostname === '192.168.174.10';
-  if (process.env.NODE_ENV === 'production' || !localHost || !(testDatabase || vmDatabase)) {
-    throw new Error('db is restricted to agromarket_test or agromarket on PostgreSQL VM 192.168.174.10, outside production.');
-  }
-  return database;
-}
+import { assertSafeMigrationTarget } from './migration-target.js';
 
 const statements = [
   `CREATE TABLE IF NOT EXISTS products (
@@ -41,7 +29,7 @@ const statements = [
 
 let client;
 try {
-  const database = assertSafeTarget(process.env.DATABASE_URL);
+  const database = assertSafeMigrationTarget({ databaseUrl: process.env.DATABASE_URL });
   client = await pool.connect();
   const { rows } = await client.query('SELECT current_database() AS name');
   if (rows[0]?.name !== database) throw new Error('Connected database differs from the validated target.');
