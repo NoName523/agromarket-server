@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import jwt from 'jsonwebtoken';
 import { requireAuth, requireRole } from '../middleware/auth.js';
+import { errorHandler } from '../middleware/errorHandler.js';
 
 function mockResponse() {
   const response = {};
@@ -53,5 +54,21 @@ describe('requireAuth', () => {
     expect(response.status).toHaveBeenCalledWith(401);
     expect(response.json.mock.calls[0][0].error).toMatch(/истёк/i);
     expect(next).not.toHaveBeenCalled();
+  });
+});
+
+describe('errorHandler in production', () => {
+  it('preserves a clear 400 client error message', () => {
+    const response = mockResponse();
+    const previous = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    try {
+      errorHandler(Object.assign(new Error('Invalid quantity'), { status: 400 }), {}, response, vi.fn());
+      expect(response.status).toHaveBeenCalledWith(400);
+      expect(response.json).toHaveBeenCalledWith({ error: 'Invalid quantity' });
+    } finally {
+      if (previous === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = previous;
+    }
   });
 });
