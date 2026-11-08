@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { pool } from './db/pool.js';
 import productsRouter from './routes/products.js';
+import categoriesRouter from './routes/categories.js';
 import ordersRouter from './routes/orders.js';
 import authRouter from './routes/auth.js';
 import { logger } from './middleware/logger.js';
@@ -37,6 +38,7 @@ app.get('/api/about', (req, res) => {
 });
 
 app.use('/api/products', productsRouter);
+app.use('/api/categories', categoriesRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/auth', authRouter);
 

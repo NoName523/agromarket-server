@@ -8,6 +8,7 @@ export default defineConfig({
     include: [
       'tests/access.test.js',
       'tests/auth.test.js',
+      'tests/categories.test.js',
       'tests/health.test.js',
       'tests/middleware.test.js',
       'tests/orders-my.test.js',
