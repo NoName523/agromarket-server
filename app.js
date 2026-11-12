@@ -28,9 +28,14 @@ if (process.env.NODE_ENV !== 'test') app.use(logger);
 app.get('/', (req, res) => res.send('AgroMarket API is running'));
 
 app.get('/api/health', async (req, res) => {
-  await pool.query('SELECT 1');
   const commit = process.env.RENDER_GIT_COMMIT;
-  res.json({ status: 'ok', db: 'connected', version: commit?.slice(0, 7) || 'local' });
+  const version = commit?.slice(0, 7) || 'local';
+  try {
+    await pool.query('SELECT 1');
+    res.json({ status: 'ok', db: 'connected', version });
+  } catch {
+    res.status(503).json({ status: 'error', db: 'unavailable', version });
+  }
 });
 
 app.get('/api/about', (req, res) => {

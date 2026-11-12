@@ -2,6 +2,37 @@ import 'dotenv/config';
 import { readFileSync } from 'node:fs';
 import { pool } from './pool.js';
 
+const force = process.argv.includes('--force');
+let seedUrl;
+try {
+  seedUrl = new URL(process.env.DATABASE_URL);
+} catch {
+  console.error('Seed отклонён: укажите корректный DATABASE_URL.');
+  process.exit(1);
+}
+
+const localHost = ['localhost', '127.0.0.1'].includes(seedUrl.hostname);
+const neonHost = seedUrl.hostname.endsWith('.neon.tech') &&
+  seedUrl.hostname.length > '.neon.tech'.length;
+if (!localHost && !neonHost) {
+  console.error('Seed отклонён: разрешены только localhost, 127.0.0.1 и *.neon.tech.');
+  process.exit(1);
+}
+
+const requestedDatabase = decodeURIComponent(seedUrl.pathname.slice(1));
+if (!requestedDatabase) {
+  console.error('Seed отклонён: в DATABASE_URL не указана база данных.');
+  process.exit(1);
+}
+if (localHost && requestedDatabase !== 'agromarket') {
+  console.error('Seed отклонён: локальный запуск разрешён только для базы agromarket.');
+  process.exit(1);
+}
+if (neonHost && (!force || requestedDatabase !== 'neondb')) {
+  console.error('Seed отклонён: Neon разрешён только с --force и базой neondb.');
+  process.exit(1);
+}
+
 let client;
 let transactionStarted = false;
 let failureMessage = 'Инициализация не выполнена. Проверьте настройки подключения и права доступа.';
@@ -12,10 +43,6 @@ try {
   }
 
   failureMessage = 'Ожидалось подключение к базе agromarket. Инициализация отменена.';
-  const connectionUrl = new URL(process.env.DATABASE_URL);
-  if (decodeURIComponent(connectionUrl.pathname) !== '/agromarket') {
-    throw new Error('Unexpected database');
-  }
 
   failureMessage = 'Не удалось прочитать схему или исходные товары.';
   const schema = readFileSync(new URL('./schema.sql', import.meta.url), 'utf8');
@@ -64,8 +91,8 @@ try {
   failureMessage = 'Не удалось подключиться к PostgreSQL. Проверьте настройки и права доступа.';
   client = await pool.connect();
   const database = await client.query('SELECT current_database() AS name');
-  failureMessage = 'Подключение ведёт не в agromarket. Инициализация отменена.';
-  if (database.rows[0].name !== 'agromarket') {
+  failureMessage = 'Имя подключённой базы не совпадает с DATABASE_URL. Инициализация отменена.';
+  if (database.rows[0].name !== requestedDatabase) {
     throw new Error('Unexpected database');
   }
 

@@ -1,8 +1,19 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { pool } from '../db/pool.js';
 import request from 'supertest';
 import app from '../app.js';
 
 describe('Server availability', () => {
+  it('returns 503 without connection details when the database is unavailable', async () => {
+    const query = vi.spyOn(pool, 'query').mockRejectedValueOnce(new Error('private connection details'));
+    try {
+      const response = await request(app).get('/api/health');
+      expect(response.status).toBe(503);
+      expect(response.body).toEqual({ status: 'error', db: 'unavailable', version: 'local' });
+    } finally {
+      query.mockRestore();
+    }
+  });
   it('serves the root health page', async () => {
     const response = await request(app).get('/');
     expect(response.status).toBe(200);
