@@ -30,6 +30,7 @@ try {
     'tests/admin-rotation.test.js',
     'tests/auth-boundaries.test.js',
     'tests/db-migration-target.test.js',
+    'tests/smoke.test.js',
     'tests/lab7-bonuses.test.js'], { stdio: 'inherit', env: process.env });
   execFileSync(process.execPath, ['node_modules/vitest/vitest.mjs', 'run'], {
     stdio: 'inherit', env: process.env,
