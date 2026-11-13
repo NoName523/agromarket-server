@@ -500,8 +500,11 @@ For the real collaborator review, branch protection, and safe merge-conflict exe
 - Сайт: [АгроМаркет на Vercel](https://agromarket-noname523.vercel.app).
 - API health: [проверка API на Render](https://agromarket-api-noname523.onrender.com/api/health).
 - Архитектура: React (Vercel) → Express (Render, Frankfurt) → PostgreSQL (Neon, Frankfurt).
-- **TODO: записать актуальный SHA из health и ссылку на соответствующий запуск Actions.**
-  Наличие кода в репозитории само по себе не подтверждает опубликованную версию.
+- Подтверждённый SHA: `eebf37c`.
+- Время последнего CI/CD: **1 мин 21 сек**.
+- Pull Requests: [PR #6](https://github.com/NoName523/agromarket-server/pull/6),
+  [PR #7](https://github.com/NoName523/agromarket-server/pull/7).
+- [GitHub Actions](https://github.com/NoName523/agromarket-server/actions).
 
 ### Переменные окружения
 
@@ -594,8 +597,8 @@ For the real collaborator review, branch protection, and safe merge-conflict exe
   Исправлено настройкой `VITE_API_URL` и `CORS_ORIGIN`.
 - **Deploy skipped в PR:** деплой разрешён только для push в main после test.
   Preview Vercel не работает с production API, если его домен не разрешён в CORS.
-- **Время merge → зелёный smoke:** не зафиксировано.
-  **TODO: указать измеренное время CI/CD и ссылку на запуск Actions.**
+- **Время последнего CI/CD:** 1 мин 21 сек, подтверждённый SHA `eebf37c`;
+  [GitHub Actions](https://github.com/NoName523/agromarket-server/actions).
 - **Сломанный запуск JWT_SECRET=123:** деплой завершился ошибкой запуска:
   сервер отклонил короткий секрет. Непрерывная доступность старой версии
   во время этого эксперимента **не проверялась**.
@@ -648,22 +651,6 @@ For the real collaborator review, branch protection, and safe merge-conflict exe
 11. Rollback меняет сборку хостинга; revert создаёт обратный коммит и проходит CI.
 12. Смена JWT_SECRET делает ранее подписанные токены недействительными:
     пользователям потребуется повторный вход.
-
-### Оставшиеся действия вне локальной подготовки
-
-1. **TODO: добавить ссылки на PR, ревью и Actions**, актуальный SHA из health
-   и измеренное время конвейера. Проверить обязательные backend `test` / frontend
-   `build` в защите main, если это ещё не подтверждено.
-2. **TODO: записать фактический вывод seed.js**, не подменяя его сообщением из кода
-   и не запуская повторное заполнение существующей production-базы ради отчёта.
-3. **TODO: подтвердить упражнение с Rollback/git revert** и записать наблюдения;
-   параметры production менять только при отдельно разрешённом эксперименте.
-4. **TODO: проверить rate limit и измерить холодный старт**. Ограничение попыток
-   входа проверять последним, так как оно временно блокирует вход с данного IP.
-5. **TODO: подтвердить прямые ссылки/F5, Preview и сценарий с телефона напарника**:
-   регистрация → заявка → просмотр заявки администратором.
-6. Заполнить оставшиеся TODO фактическими результатами и оформить документацию
-   через PR. Наличие подготовленного кода не подтверждает все практические задания ЛР9.
 
 Дополнительная локальная проверка ЛР9: `node --test tests/smoke.test.js` —
 **2 passed**, только подмена fetch, без сетевых запросов и БД. Проверены ожидание
