@@ -1,0 +1,29 @@
+# Exported from Render on 2026-11-14T17:10:01Z
+version: "1"
+projects:
+  - name: My project
+    environments:
+      - name: Production
+        services:
+          - type: web
+            name: agromarket-api-noname523
+            runtime: node
+            repo: https://github.com/NoName523/agromarket-server
+            branch: main
+            plan: free
+            envVars:
+              - key: JWT_SECRET
+                sync: false
+              - key: CORS_ORIGIN
+                sync: false
+              - key: JWT_EXPIRES_IN
+                sync: false
+              - key: DATABASE_URL
+                sync: false
+              - key: NODE_ENV
+                sync: false
+            region: frankfurt
+            buildCommand: npm ci --omit=dev
+            startCommand: npm start
+            healthCheckPath: /api/health
+            autoDeployTrigger: "off"
