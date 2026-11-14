@@ -447,11 +447,11 @@ Postman и задайте в нём `userEmail`, `userPassword`, `adminEmail`,
 включены. Backend-тесты с моками прошли: 3 из 3. `npm run lint` и `npm run build`
 frontend также прошли. Изменяющие CRUD-проверки на рабочей БД не запускались.
 
-## Lab 8: tests, CI, and Git workflow
+## Лабораторная работа 8: тесты, CI и Git-workflow
 
-### Run the API tests
+### Запуск тестов API
 
-Use PostgreSQL 16 or newer and create a dedicated database named `agromarket_test`. Copy `.env` to `.env.test`; keep the existing VMware host, port, user, and password, changing only the database name. The test setup verifies both the configured database name and PostgreSQL's `current_database()` before `db:init` can reset the test schema. `db:init` refuses every database except `agromarket_test`. For this VMware setup, `pg_hba.conf` must also permit `agromarket_user` from the Windows host (192.168.174.1) to `agromarket_test`; duplicate the existing working `agromarket` rule with only the database name changed, then reload PostgreSQL.
+Используйте PostgreSQL 16 или новее и создайте отдельную базу данных `agromarket_test`. Скопируйте `.env` в `.env.test`; сохраните существующие адрес VMware, порт, пользователя и пароль, изменив только имя базы данных. Перед сбросом тестовой схемы командой `db:init` тестовая настройка проверяет и заданное имя базы, и значение `current_database()` в PostgreSQL. `db:init` отказывается работать с любой базой, кроме `agromarket_test`. Для этой конфигурации VMware в `pg_hba.conf` также должен быть разрешён доступ `agromarket_user` с хоста Windows (192.168.174.1) к `agromarket_test`; скопируйте существующее правило для рабочей `agromarket`, изменив только имя базы, затем перечитайте конфигурацию PostgreSQL.
 
 ```bash
 npm ci
@@ -460,31 +460,31 @@ npm run test:watch
 npm run coverage
 ```
 
-Coverage reports are written to `coverage/` and are ignored by Git. The latest verified local report is recorded in the Lab 8 results below.
+Отчёты покрытия записываются в `coverage/` и исключены из Git. Последний проверенный локальный отчёт приведён ниже в результатах ЛР8.
 
-### GitHub Flow and commits
+### GitHub Flow и коммиты
 
-Create a `feature/...` or `fix/...` branch from `main`, make focused changes, run tests, and open a Pull Request. Merge after CI passes and a reviewer approves; use Squash and merge. Protect `main` with a required Pull Request, one approval, the `test` status check, and blocked force pushes.
+Создайте ветку `feature/...` или `fix/...` от `main`, внесите связанные изменения, запустите тесты и откройте Pull Request. Объединяйте изменения после успешного CI и одобрения проверяющего; используйте Squash and merge. Защитите `main`: требуйте Pull Request и одно одобрение, обязательную проверку статуса `test` и запретите force push.
 
-Use Conventional Commits, for example `feat: add product search`, `fix: return 404 for missing order`, `test: auth and access control`, `refactor: split app.js and server.js`, `ci: run tests in GitHub Actions`, and `docs: testing and git workflow in README`.
+Используйте Conventional Commits, например `feat: add product search`, `fix: return 404 for missing order`, `test: auth and access control`, `refactor: split app.js and server.js`, `ci: run tests in GitHub Actions` и `docs: testing and git workflow in README`.
 
-### Lab 8 answers
+### Ответы на вопросы ЛР8
 
-- Admin-role regression: the passing access tests cover no token (401), invalid JWT (401), and a regular user. If `requireRole` is removed only from `POST /api/products`, the regular-user create assertion is the one expected to fail (it receives 201 instead of 403); `requireAuth` still enforces 401. The deliberate code-removal experiment was not performed.
-- Coverage: **Lines 69.86%, Statements 67.24%, Branches 56.55%, Functions 80.64%**. `routes/orders.js:30` is uncovered because no test sends an invalid `status` query to the administrator order-list route. `middleware/logger.js` is 0% by design: the app skips request logging when `NODE_ENV=test`.
-- The `requireRole` unit test calls one middleware function with `vi.fn()` mocks and no HTTP server or database. `access.test.js` sends HTTP requests through Express, JWT verification, route middleware, and PostgreSQL.
-- Code-review feedback received: **fill after your partner reviews the PR**.
-- Comments left on the partner's PR: **fill after you review the partner's PR**.
-- AI was used to prepare implementation and tests. Results above distinguish completed checks from blocked integration tests.
+- Регрессия роли администратора: успешно проходящие тесты доступа проверяют отсутствие токена (401), неверный JWT (401) и обычного пользователя. Если убрать `requireRole` только из `POST /api/products`, должен упасть тест создания товара обычным пользователем: вместо 403 он получит 201; `requireAuth` по-прежнему обеспечивает ответ 401. Эксперимент с намеренным удалением кода не проводился.
+- Покрытие: **Lines 69.86%, Statements 67.24%, Branches 56.55%, Functions 80.64%**. Строка `routes/orders.js:30` не покрыта, поскольку ни один тест не отправляет неверный параметр запроса `status` в маршрут списка заказов администратора. Покрытие `middleware/logger.js` равно 0% намеренно: приложение пропускает журналирование запросов при `NODE_ENV=test`.
+- Модульный тест `requireRole` вызывает одну функцию middleware с моками `vi.fn()` без HTTP-сервера и базы данных. `access.test.js` отправляет HTTP-запросы через Express, проверку JWT, middleware маршрутов и PostgreSQL.
+- Полученные замечания code review: **заполнить после проверки PR напарником**.
+- Комментарии к PR напарника: **заполнить после проверки его PR**.
+- Для подготовки реализации и тестов использовался ИИ. Приведённые результаты отличают завершённые проверки от заблокированных интеграционных тестов.
 
-### Local experiment record
+### Результаты локальных проверок
 
-- Backend `npm test`: **32 passed, 0 failed** (3 existing `node:test` checks and 29 Vitest cases).
+- Backend `npm test`: **32 passed, 0 failed** (3 существующие проверки `node:test` и 29 случаев Vitest).
 - Backend `npm run coverage`: **29 passed, 0 failed**; Lines 69.86%, Statements 67.24%, Branches 56.55%, Functions 80.64%.
-- Red CI experiment: use a temporary feature branch, make one test expectation fail, confirm the check is red and merge is blocked, then restore the expectation and confirm the check is green. Do not leave the failing test in the final branch.
-- Frontend checks: `npm run lint`, `npm run build`, and `npm test`.
+- Эксперимент с красным CI: создайте временную feature-ветку, измените ожидание в одном тесте так, чтобы он завершался ошибкой, убедитесь, что проверка стала красной и объединение заблокировано, затем восстановите ожидание и подтвердите, что проверка стала зелёной. Не оставляйте падающий тест в итоговой ветке.
+- Проверки frontend: `npm run lint`, `npm run build` и `npm test`.
 
-For the real collaborator review, branch protection, and safe merge-conflict exercise, see [the Lab 8 GitHub steps](./docs/lab8-github-manual.md).
+Инструкции по реальному code review с напарником, защите ветки и безопасному упражнению с конфликтом слияния приведены в [инструкции GitHub для ЛР8](./docs/lab8-github-manual.md).
 ## Скриншоты ЛР8
 
 ![Результаты backend-тестов](./screenshots/lab8/lab8-backend-tests.png)
@@ -492,21 +492,40 @@ For the real collaborator review, branch protection, and safe merge-conflict exe
 ![Успешный Backend CI в GitHub Actions](./screenshots/lab8/lab8-backend-ci-green.png)
 ![Успешно объединённый Pull Request](./screenshots/lab8/lab8-backend-pr-merged.png)
 
-## Продакшен
+# Лабораторная работа №9 — Деплой «АгроМаркета»
 
-Ниже записаны подтверждённые результаты ЛР9. Неизмеренные показатели и
-непроверенные действия явно отмечены как TODO; результаты ЛР2–8 сохранены выше.
+**Цель работы** — перенести fullstack-приложение в интернет: разместить облачную
+PostgreSQL в Neon, Express API на Render, React на Vercel и настроить CI/CD
+через GitHub Actions.
+
+Архитектура: React (Vercel) → Express (Render, Frankfurt) → PostgreSQL (Neon, Frankfurt).
+Vercel раздаёт frontend, Render обрабатывает API-запросы, а Neon хранит данные.
+Лабораторная посвящена настройке окружения, доставке проверенного коммита,
+smoke-проверкам опубликованной версии и восстановлению после неудачного релиза.
+
+Сайт и API развёрнуты. Подтверждены настройка адреса API/CORS, локальные тесты
+и сборка, последний успешный запуск CI/CD за 1 мин 31 сек для SHA `3e9daa7`,
+а также результаты аудита и отказ запуска с коротким JWT_SECRET.
+Уведомление о долгом запросе и фильтр категорий реализованы только локально.
+Файл ежедневного smoke создан локально, но ещё отсутствует в GitHub main:
+расписание пока не действует. Render Blueprint подключён к существующему
+сервису; в Neon создана ветка preview.
+Preview-сайт на отдельную базу ещё не направлен, холодный старт не измерялся.
+Остальные неподтверждённые действия отмечены как TODO.
+
+## Продакшен
 
 - Сайт: [АгроМаркет на Vercel](https://agromarket-noname523.vercel.app).
 - API health: [проверка API на Render](https://agromarket-api-noname523.onrender.com/api/health).
 - Архитектура: React (Vercel) → Express (Render, Frankfurt) → PostgreSQL (Neon, Frankfurt).
-- Подтверждённый SHA: `eebf37c`.
-- Время последнего CI/CD: **1 мин 21 сек**.
+- Подтверждённый SHA: `3e9daa7`.
+- Последний CI/CD: **успешно, 1 мин 31 сек** —
+  [запуск GitHub Actions](https://github.com/NoName523/agromarket-server/actions/runs/43620800025).
 - Pull Requests: [PR #6](https://github.com/NoName523/agromarket-server/pull/6),
   [PR #7](https://github.com/NoName523/agromarket-server/pull/7).
 - [GitHub Actions](https://github.com/NoName523/agromarket-server/actions).
 
-### Переменные окружения
+## Переменные окружения
 
 Значения секретов хранятся только в панелях сервисов и исключённых из Git файлах.
 В `VITE_` нельзя помещать секреты: эти значения видны в JavaScript браузера.
@@ -526,29 +545,21 @@ For the real collaborator review, branch protection, and safe merge-conflict exe
 | FRONTEND_URL | GitHub Actions Variables backend | Нет; Origin сайта без конечного `/` |
 | EXPECTED_VERSION | Backend deploy job | Нет; автоматически github.sha |
 
-### Деплой и безопасность данных
+## Настройка и деплой
 
-1. PR → CI и ревью → merge в main. Backend `test` использует отдельную
-   `agromarket_test` в PostgreSQL 16; `deploy` зависит от `test`, работает только
-   при push в main и выполняется последовательно (`concurrency: production`).
-2. Deploy Hook получает `ref=github.sha`. Smoke ждёт первые 7 символов этого SHA
-   в health, затем отдельно проверяет каталог, POST без JWT → 401, GET с CORS,
-   отсутствующий товар → 404 и категории. Каждая проверка имеет собственный
-   результат; ошибки дают ненулевой код завершения. POST отправляет `{}`:
-   даже при потере middleware авторизации валидация отклонит тело.
-3. Render: Node 22, `npm ci --omit=dev`, запуск `npm run db:migrate && npm start`,
-   Health Check `/api/health`, Auto-Deploy Off. В этом проекте production-миграция
-   дополнительно требует `NODE_ENV=production` и
-   `CONFIRM_NEON_PRODUCTION_MIGRATION=I_ACKNOWLEDGE_PRODUCTION_SCHEMA_MIGRATION`.
-   Без явного подтверждения запуск будет отклонён. Команда `npm run db` и прямой
-   `node db/migrate.js` не заменяют разрешённую production-команду.
-4. Frontend автоматически собирается Vercel из main. React CI job `build`
-   выполняет `npm ci`, lint и build с примерным адресом
-   `https://example.invalid/api`. Vercel собирает main с реальным VITE_API_URL;
-   изменение переменной требует новой сборки. `vercel.json` содержит SPA rewrite.
-5. При аварии — оперативный Rollback на Render, затем `git revert` через PR,
-   чтобы отменить проблемные изменения в истории и согласовать main с production.
-   Фактический результат упражнения с откатом пока не подтверждён.
+1. **Neon:** PostgreSQL размещена во Frankfurt. Строка подключения с SSL хранится
+   в окружении Render; она не включается в README или Git.
+2. **Render:** существующий Node.js-сервис `agromarket-api-noname523`, Frankfurt, Free.
+   Сборка — `npm ci --omit=dev`, фактическая команда запуска — `npm start`.
+   Health Check — `/api/health`, Auto-Deploy выключен. Проверка health обращается
+   к БД и сообщает версию по первым 7 символам `RENDER_GIT_COMMIT`.
+3. **Vercel:** сборка — `npm run build`, результат — `dist`; SPA rewrite задан
+   в frontend-файле `vercel.json`. Реальный `VITE_API_URL` с HTTPS и `/api`
+   задаётся до сборки; изменение переменной требует пересборки.
+4. **Связь frontend и API:** точный Origin Vercel разрешён в `CORS_ORIGIN`.
+   Домен Preview отличается от production-домена и требует отдельного разрешения.
+
+### Безопасность данных и миграции
 
 `npm run db:init` направлен на `db/test-init.js` и разрешён только для
 `agromarket_test`; он сбрасывает её тестовую схему. Это не команда для Neon.
@@ -568,13 +579,65 @@ For the real collaborator review, branch protection, and safe merge-conflict exe
 подтверждение production сохранены. Повторный запуск на реальной БД в этой
 подготовке не проверен; статическая проверка не заменяет такой эксперимент.
 
+Миграции не включены в текущую команду запуска Render. При отдельно согласованном
+применении `npm run db:migrate` к Neon нужны `NODE_ENV=production` и
+`CONFIRM_NEON_PRODUCTION_MIGRATION=I_ACKNOWLEDGE_PRODUCTION_SCHEMA_MIGRATION`.
+Без подтверждения production-миграция отклоняется; `npm run db` и прямой
+`node db/migrate.js` не заменяют разрешённую production-команду.
+
+## CI/CD
+
+1. Изменения проходят PR → CI и ревью → merge в main. Backend job `test`
+   использует отдельную `agromarket_test` в PostgreSQL 16.
+2. GitHub Actions запускает `deploy` только после успешного `test` и только
+   при push в main. Поэтому в Pull Request деплой пропускается.
+   Группа `concurrency: production` исключает одновременное выполнение деплоев.
+3. Render Deploy Hook получает `ref=github.sha` и разворачивает проверенный
+   коммит. Smoke ждёт его версию в health, затем проверяет каталог, POST без JWT
+   → 401, GET с CORS, отсутствующий товар → 404 и категории.
+   Каждая проверка выводит отдельный результат; ошибки дают ненулевой код завершения.
+   POST отправляет `{}`: даже при потере авторизации валидация отклонит тело.
+4. Frontend автоматически собирается Vercel из main. React CI job `build`
+   выполняет `npm ci`, lint и build с адресом `https://example.invalid/api`.
+   Preview Vercel не работает с production API, если его домен не разрешён в CORS.
+5. При аварии — оперативный Rollback на Render, затем `git revert` через PR,
+   чтобы отменить проблемные изменения в истории и согласовать main с production.
+   Фактический результат упражнения с откатом пока не подтверждён.
+
+## Бонусные задания
+
+1. **Уведомление о холодном запуске — реализовано локально, ещё не опубликовано.**
+   Если API-запрос длится более 3 секунд, React показывает сообщение
+   «Сервер просыпается, это может занять до минуты».
+   После получения ответа или ошибки сообщение исчезает; параллельные запросы
+   не создают дублирующихся уведомлений.
+2. **Фильтр категорий — реализован локально, ещё не опубликован.**
+   Каталог получает категории через `/api/categories` и показывает кнопки
+   с количеством товаров, например «Мёд (3)».
+   Выбор категории совмещается с поиском по названию; кнопка «Все категории»
+   сбрасывает фильтр. Для полного каталога учитываются все страницы товаров.
+3. **Ежедневный Smoke — подготовлен локально, расписание ещё не действует.**
+   Файл `.github/workflows/smoke.yml` создан локально, но пока отсутствует
+   в GitHub main. В нём предусмотрены ежедневный запуск в 03:00 UTC
+   (`0 3 * * *`) и ручной запуск `workflow_dispatch`. Workflow проверяет API
+   без запуска деплоя; существующий конвейер CI/CD сохранён.
+4. **Neon Preview — ветка создана, Preview-сайт пока не подключён.**
+   Отдельная ветка `preview` создана от `production` с копией данных и схемы.
+   Направление Preview-сайта на эту базу ещё не настраивалось.
+5. **Render Blueprint — подключён к существующему сервису.** Конфигурация описана в
+   [`render.yaml`](./render.yaml). Существующий сервис `agromarket-api-noname523`
+   подключён к Blueprint `agromarket`, Auto Sync выключен. Автодеплой через
+   GitHub Actions сохранён; Blueprint не заменяет существующий CI/CD-конвейер.
+
 `GET /api/categories` возвращает `{ name, count }[]`, включая группу `name: null`
 для товаров без категории. `count` — целое число. Тест сравнивает сумму со всем
 каталогом, прочитанным страницами по 2 товара, и проверяет каждую группу отдельно.
 Обычный GET каталога возвращает только первые 20 товаров, поэтому сравнение
 с длиной одной страницы некорректно.
 
-### Локальные проверки ЛР9
+## Результаты лабораторной и выводы
+
+### Локальные проверки
 
 - Frontend `npm.cmd run lint` и `npm.cmd run build`: успешно.
 - Backend `npm test`: **10 node-тестов и 34 Vitest-теста прошли**,
@@ -586,7 +649,15 @@ For the real collaborator review, branch protection, and safe merge-conflict exe
   Это прежняя проблема доступа, а не текущий статус тестов.
 - CI настроен на Node 22. При обновлении этой документации тесты не перезапускались.
 
-## Лабораторная 9 — ответы
+Дополнительная локальная проверка ЛР9: `node --test tests/smoke.test.js` —
+**2 passed**, только подмена fetch, без сетевых запросов и БД. Проверены ожидание
+нужного SHA, API-префикс, безопасный POST, GET CORS, продолжение после ошибки и
+код завершения. `node --check` для изменённых JS и скриптов БД, `git diff --check`
+в обоих репозиториях ранее прошли. Интеграционные тесты категорий и health
+включены в успешно завершённый запуск из 34 Vitest-тестов. При обновлении README
+эти проверки повторно не выполнялись.
+
+### Ответы и наблюдения
 
 - **Предохранитель seed:** по коду Neon без флага получает сообщение
   «Seed отклонён: Neon разрешён только с --force и базой neondb.».
@@ -595,10 +666,6 @@ For the real collaborator review, branch protection, and safe merge-conflict exe
   Предохранитель не даёт случайно инициализировать чужую/рабочую базу.
 - **Каталог на Vercel:** сначала не загружался из-за настройки адреса API/CORS.
   Исправлено настройкой `VITE_API_URL` и `CORS_ORIGIN`.
-- **Deploy skipped в PR:** деплой разрешён только для push в main после test.
-  Preview Vercel не работает с production API, если его домен не разрешён в CORS.
-- **Время последнего CI/CD:** 1 мин 21 сек, подтверждённый SHA `eebf37c`;
-  [GitHub Actions](https://github.com/NoName523/agromarket-server/actions).
 - **Сломанный запуск JWT_SECRET=123:** деплой завершился ошибкой запуска:
   сервер отклонил короткий секрет. Непрерывная доступность старой версии
   во время этого эксперимента **не проверялась**.
@@ -626,36 +693,14 @@ For the real collaborator review, branch protection, and safe merge-conflict exe
 
 **TODO: выполнить и записать проверку rate limit отдельно; сейчас пункт 6 аудита не закрыт.**
 
-### Краткие ответы для защиты
+### Выводы
 
-1. Vercel раздаёт React, Render исполняет Express, Neon хранит PostgreSQL.
-   Близкие регионы API и БД уменьшают задержку SQL-запросов.
-2. Render читает окружение при запуске; Vite встраивает VITE_ при сборке,
-   и их значения доступны посетителю.
-3. db:init сбрасывает тестовую схему; миграция сохраняет данные.
-   Идемпотентность означает, что повторное применение не меняет итог повторно.
-4. CORS управляет доступом браузерного JavaScript к ответу другого Origin;
-   он не заменяет JWT и проверку ролей.
-5. trust proxy позволяет Express учитывать прокси и адрес клиента при
-   ограничении запросов; конфигурация должна соответствовать цепочке прокси.
-6. needs задаёт зависимость от тестов, if ограничивает события, ref=SHA
-   связывает деплой с проверенным коммитом. Hook секретен, поскольку запускает деплой.
-7. Smoke проверяет уже развёрнутую систему; интеграционные тесты ЛР8 создают
-   тестовые данные. Smoke не должен создавать или удалять production-данные.
-8. Ошибка 500 может раскрыть внутреннюю структуру; 400 объясняет ошибку
-   запроса. Текущий обработчик дополнительно скрывает внутренние ошибки и локально.
-9. SIGTERM прекращает приём новых соединений и закрывает пул после текущих
-   запросов; неверная конфигурация должна останавливать старт до приёма трафика.
-10. После простоя бесплатный сервис может уснуть; пользователь видит долгий
-    первый запрос. Фактические условия тарифа и время проверить вручную.
-11. Rollback меняет сборку хостинга; revert создаёт обратный коммит и проходит CI.
-12. Смена JWT_SECRET делает ранее подписанные токены недействительными:
-    пользователям потребуется повторный вход.
+«АгроМаркет» перенесён на связку Vercel → Render → Neon. Доставка backend
+связана с проверками GitHub Actions и smoke нужного коммита, а секреты не
+публикуются в коде frontend. Ошибка API/CORS устранена; короткий JWT_SECRET
+останавливает запуск сервера, защитные заголовки и HTTPS подтверждены аудитом.
 
-Дополнительная локальная проверка ЛР9: `node --test tests/smoke.test.js` —
-**2 passed**, только подмена fetch, без сетевых запросов и БД. Проверены ожидание
-нужного SHA, API-префикс, безопасный POST, GET CORS, продолжение после ошибки и
-код завершения. `node --check` для изменённых JS и скриптов БД, `git diff --check`
-в обоих репозиториях ранее прошли. Интеграционные тесты категорий и health
-включены в успешно завершённый запуск из 34 Vitest-тестов. При обновлении README
-эти проверки повторно не выполнялись.
+Не проверялась непрерывная доступность старой версии при неудачном запуске.
+Использование отдельной базы Preview-сайтом не настроено; проверка rate limit
+пропущена, холодный старт не измерен, результат упражнения с откатом ещё
+требует подтверждения. Эти ограничения не выдаются за выполненные задания.
