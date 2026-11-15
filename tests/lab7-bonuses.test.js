@@ -96,14 +96,21 @@ test('бонусы и HTTP-защита работают с моками без 
       { oldPassword: 'old-pass-123', newPassword: 'new-pass-123' }, `Bearer ${token}`))).status, 200);
     assert.equal(await bcrypt.compare('new-pass-123', passwordHash), true);
 
-    assert.equal((await send('/api/auth/login', json('POST',
-      { email: 'test@example.invalid', password: 'new-pass-123' }))).status, 200);
-    for (let attempt = 0; attempt < 5; attempt += 1) {
+    const previousRateLimitTestFlag = process.env.ENABLE_AUTH_RATE_LIMIT_TESTS;
+    process.env.ENABLE_AUTH_RATE_LIMIT_TESTS = 'true';
+    try {
       assert.equal((await send('/api/auth/login', json('POST',
-        { email: 'test@example.invalid', password: 'wrong' }))).status, 401);
+        { email: 'test@example.invalid', password: 'new-pass-123' }))).status, 200);
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        assert.equal((await send('/api/auth/login', json('POST',
+          { email: 'test@example.invalid', password: 'wrong' }))).status, 401);
+      }
+      assert.equal((await send('/api/auth/login', json('POST',
+        { email: 'test@example.invalid', password: 'wrong' }))).status, 429);
+    } finally {
+      if (previousRateLimitTestFlag === undefined) delete process.env.ENABLE_AUTH_RATE_LIMIT_TESTS;
+      else process.env.ENABLE_AUTH_RATE_LIMIT_TESTS = previousRateLimitTestFlag;
     }
-    assert.equal((await send('/api/auth/login', json('POST',
-      { email: 'test@example.invalid', password: 'wrong' }))).status, 429);
     assert.ok(logs.every((line) => !line.includes(token) && !line.includes('new-pass-123')));
   } finally {
     server.closeAllConnections();

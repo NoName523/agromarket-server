@@ -14,6 +14,7 @@ export default defineConfig({
       'tests/orders-my.test.js',
       'tests/products.test.js',
       'tests/rate-limit.test.js',
+      'tests/security.test.js',
     ],
     env: parsed,
     globalSetup: './tests/globalSetup.js',
