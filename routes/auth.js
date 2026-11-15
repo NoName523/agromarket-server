@@ -4,6 +4,8 @@ import jwt from 'jsonwebtoken';
 import { rateLimit } from 'express-rate-limit';
 import { pool } from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
+import { loginSchema, registerSchema } from '../middleware/schemas.js';
+import { validate } from '../middleware/validate.js';
 
 const router = Router();
 const jwtSecret = process.env.JWT_SECRET;
@@ -16,11 +18,23 @@ if (!jwtSecret || jwtSecret.length < 32 || jwtSecret.startsWith('replace-with-')
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 5,
+  limit: 10,
   skipSuccessfulRequests: true,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'test' &&
+    process.env.ENABLE_AUTH_RATE_LIMIT_TESTS !== 'true',
   message: { error: 'Слишком много попыток. Повторите позже.' },
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Слишком много попыток регистрации. Повторите позже.' },
+  skip: () => process.env.NODE_ENV === 'test' &&
+    process.env.ENABLE_AUTH_RATE_LIMIT_TESTS !== 'true',
 });
 
 function issueToken(user) {
@@ -34,7 +48,7 @@ function normalizedEmail(value) {
   return typeof value === 'string' ? value.trim().toLowerCase() : '';
 }
 
-router.post('/register', async (req, res) => {
+router.post('/register', registerLimiter, validate(registerSchema), async (req, res) => {
   const { name, email, password } = req.body ?? {};
   const cleanName = typeof name === 'string' ? name.trim() : '';
   const cleanEmail = normalizedEmail(email);
@@ -59,7 +73,7 @@ router.post('/register', async (req, res) => {
   res.status(201).json({ user, token: issueToken(user) });
 });
 
-router.post('/login', loginLimiter, async (req, res) => {
+router.post('/login', loginLimiter, validate(loginSchema), async (req, res) => {
   const { email, password } = req.body ?? {};
   const cleanEmail = normalizedEmail(email);
   if (!cleanEmail || typeof password !== 'string') {

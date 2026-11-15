@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { validateOrder } from '../middleware/validateOrder.js';
 import { pool } from '../db/pool.js';
 import { optionalAuth, requireAuth, requireRole } from '../middleware/auth.js';
+import { idParam, orderStatusSchema } from '../middleware/schemas.js';
+import { validate } from '../middleware/validate.js';
 
 const router = Router();
 
@@ -54,12 +56,13 @@ router.post('/', optionalAuth, validateOrder, async (req, res) => {
   res.status(201).json(serializeOrder(rows[0]));
 });
 
-router.patch('/:id', requireAuth, requireRole('admin'), async (req, res) => {
+router.patch('/:id', validate(idParam, 'params'), requireAuth, requireRole('admin'),
+  validate(orderStatusSchema), async (req, res) => {
   const id = Number(req.params.id);
   if (!/^\d+$/.test(req.params.id) || !Number.isInteger(id) || id < 1 || id > 2147483647) {
     return res.status(400).json({ error: 'ID должен быть положительным целым числом в диапазоне INTEGER' });
   }
-  const { status } = req.body || {};
+  const { status } = req.body;
   if (typeof status !== 'string' || !status.trim()) {
     return res.status(400).json({ error: 'Поле status обязательно и должно быть непустой строкой' });
   }
@@ -69,6 +72,6 @@ router.patch('/:id', requireAuth, requireRole('admin'), async (req, res) => {
   );
   if (rows.length === 0) return res.status(404).json({ error: 'Заявка не найдена' });
   res.json(serializeOrder(rows[0]));
-});
+  });
 
 export default router;

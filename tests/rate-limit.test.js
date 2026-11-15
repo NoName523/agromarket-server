@@ -3,19 +3,27 @@ import request from 'supertest';
 import app from '../app.js';
 
 describe('Login rate limit', () => {
-  it('returns 429 and Retry-After on the sixth failed attempt', async () => {
+  it('allows 10 failed attempts, then returns standard limit headers and Retry-After', async () => {
     app.set('trust proxy', 1);
+    const previous = process.env.ENABLE_AUTH_RATE_LIMIT_TESTS;
+    process.env.ENABLE_AUTH_RATE_LIMIT_TESTS = 'true';
     const ip = '198.51.100.42';
-    for (let attempt = 1; attempt <= 5; attempt += 1) {
-      const response = await request(app).post('/api/auth/login')
+    try {
+      for (let attempt = 1; attempt <= 10; attempt += 1) {
+        const response = await request(app).post('/api/auth/login')
+          .set('X-Forwarded-For', ip)
+          .send({ email: 'nobody@test.invalid', password: 'incorrect' });
+        expect(response.status).toBe(401);
+      }
+      const limited = await request(app).post('/api/auth/login')
         .set('X-Forwarded-For', ip)
         .send({ email: 'nobody@test.invalid', password: 'incorrect' });
-      expect(response.status).toBe(401);
+      expect(limited.status).toBe(429);
+      expect(limited.headers['ratelimit-policy'] || limited.headers.ratelimit).toBeTruthy();
+      expect(limited.headers['retry-after']).toBeTruthy();
+    } finally {
+      if (previous === undefined) delete process.env.ENABLE_AUTH_RATE_LIMIT_TESTS;
+      else process.env.ENABLE_AUTH_RATE_LIMIT_TESTS = previous;
     }
-    const limited = await request(app).post('/api/auth/login')
-      .set('X-Forwarded-For', ip)
-      .send({ email: 'nobody@test.invalid', password: 'incorrect' });
-    expect(limited.status).toBe(429);
-    expect(limited.headers['retry-after']).toBeTruthy();
   });
 });

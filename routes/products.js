@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { pool } from '../db/pool.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
+import { idParam, productSchema, productUpdateSchema } from '../middleware/schemas.js';
+import { validate } from '../middleware/validate.js';
 
 const router = Router();
 
@@ -97,7 +99,7 @@ router.get('/', async (req, res) => {
   res.json(rows);
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', validate(idParam, 'params'), async (req, res) => {
   const id = Number(req.params.id);
   if (!validId(req.params.id)) {
     return res.status(400).json({ error: 'ID должен быть положительным целым числом в диапазоне INTEGER' });
@@ -110,7 +112,7 @@ router.get('/:id', async (req, res) => {
   res.json(rows[0]);
 });
 
-router.post('/', requireAuth, requireRole('admin'), async (req, res) => {
+router.post('/', requireAuth, requireRole('admin'), validate(productSchema), async (req, res) => {
   const error = validateProduct(req.body);
   if (error) return res.status(400).json({ error });
 
@@ -122,7 +124,8 @@ router.post('/', requireAuth, requireRole('admin'), async (req, res) => {
   res.status(201).json(rows[0]);
 });
 
-router.put('/:id', requireAuth, requireRole('admin'), async (req, res) => {
+router.put('/:id', validate(idParam, 'params'), requireAuth, requireRole('admin'),
+  validate(productSchema), async (req, res) => {
   if (!validId(req.params.id)) {
     return res.status(400).json({ error: 'ID должен быть положительным целым числом в диапазоне INTEGER' });
   }
@@ -139,7 +142,22 @@ router.put('/:id', requireAuth, requireRole('admin'), async (req, res) => {
   res.json(rows[0]);
 });
 
-router.delete('/:id', requireAuth, requireRole('admin'), async (req, res) => {
+router.patch('/:id', validate(idParam, 'params'), requireAuth, requireRole('admin'),
+  validate(productUpdateSchema), async (req, res) => {
+  const columns = { name: 'name', category: 'category', price: 'price', unit: 'unit', image: 'image' };
+  const entries = Object.entries(req.body);
+  const assignments = entries.map(([field], index) => `${columns[field]} = $${index + 1}`);
+  const values = entries.map(([field, value]) => field === 'price' ? Number(value) : value);
+  values.push(Number(req.params.id));
+  const { rows } = await pool.query(
+    `UPDATE public.products SET ${assignments.join(', ')}
+     WHERE id = $${values.length} RETURNING *`, values,
+  );
+  if (rows.length === 0) return res.status(404).json({ error: 'Товар не найден' });
+  res.json(rows[0]);
+  });
+
+router.delete('/:id', validate(idParam, 'params'), requireAuth, requireRole('admin'), async (req, res) => {
   if (!validId(req.params.id)) {
     return res.status(400).json({ error: 'ID должен быть положительным целым числом в диапазоне INTEGER' });
   }

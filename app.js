@@ -12,11 +12,14 @@ import { errorHandler } from './middleware/errorHandler.js';
 const app = express();
 app.set('trust proxy', 1);
 app.use(helmet());
-const corsOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
-  .split(',').map((origin) => origin.trim()).filter(Boolean);
+const corsOrigins = new Set([
+  'https://agromarket-noname523.vercel.app',
+  'http://localhost:5173',
+  ...(process.env.CORS_ORIGIN || '').split(',').map((origin) => origin.trim()).filter(Boolean),
+]);
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || corsOrigins.includes(origin)) return callback(null, true);
+    if (!origin || corsOrigins.has(origin)) return callback(null, true);
     return callback(null, false);
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
