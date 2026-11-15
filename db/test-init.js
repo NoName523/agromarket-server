@@ -2,22 +2,17 @@ import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import { readFile } from 'node:fs/promises';
 import { pool } from './pool.js';
+import { assertTestInitConfiguration, assertTestInitTarget, dropTestSchemaSafely } from './test-init-guard.js';
 
 let client;
 let transactionStarted = false;
 
 try {
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required');
-  const configuredDatabase = decodeURIComponent(new URL(process.env.DATABASE_URL).pathname.slice(1));
-  if (configuredDatabase !== 'agromarket_test') {
-    throw new Error('db:init is restricted to agromarket_test');
-  }
+  assertTestInitConfiguration({ databaseUrl: process.env.DATABASE_URL, nodeEnv: process.env.NODE_ENV });
 
   client = await pool.connect();
-  const { rows } = await client.query('SELECT current_database() AS name');
-  if (rows[0]?.name !== 'agromarket_test') {
-    throw new Error('Connected database is not agromarket_test');
-  }
+  await assertTestInitTarget(client);
 
   const { products } = JSON.parse(await readFile(new URL('../data/db.json', import.meta.url), 'utf8'));
   if (!Array.isArray(products) || products.length === 0) {
@@ -34,7 +29,7 @@ try {
 
   await client.query('BEGIN');
   transactionStarted = true;
-  await client.query('DROP SCHEMA public CASCADE');
+  await dropTestSchemaSafely(client);
   await client.query('CREATE SCHEMA public');
   await client.query('SET LOCAL search_path TO public');
   await client.query(schema);

@@ -108,7 +108,7 @@ Express 5 API (localhost:3000)
 PostgreSQL 18 (Ubuntu VMware)
 ```
 
-В этой учебной конфигурации PostgreSQL запущен в Ubuntu VMware по адресу `192.168.174.10:5432`; база называется `agromarket`, пользователь — `agromarket_user`. Этот IP относится только к локальной виртуальной машине данного проекта. В другой сети, на другом компьютере или при использовании облачной БД значение `DATABASE_URL` необходимо настроить самостоятельно.
+В этой учебной конфигурации PostgreSQL запущен в Ubuntu VMware по адресу `<VM_HOST>:5432`; база называется `agromarket`, пользователь — `<DB_USER>`. Этот IP относится только к локальной виртуальной машине данного проекта. В другой сети, на другом компьютере или при использовании облачной БД значение `DATABASE_URL` необходимо настроить самостоятельно.
 
 ### Настройка и запуск
 
@@ -119,7 +119,7 @@ PostgreSQL 18 (Ubuntu VMware)
 
    ```dotenv
    PORT=3000
-   DATABASE_URL=postgresql://agromarket_user:<PASSWORD>@192.168.174.10:5432/agromarket
+   DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE
    CORS_ORIGIN=http://localhost:5173
    ```
 
@@ -283,7 +283,7 @@ JWT-аутентификацию и разграничение прав, сох�
 Запросы идут по цепочке React → Express 5 → PostgreSQL 18 на Ubuntu VMware.
 Этот раздел описывает текущее состояние проекта. Числа 16 запросов и 48 проверок выше
 относятся к прежней коллекции ЛР6, а её открытые маршруты записи теперь защищены.
-PostgreSQL 18 находится в Ubuntu VMware по адресу `192.168.174.10:5432`;
+PostgreSQL 18 находится в Ubuntu VMware по адресу `<VM_HOST>:5432`;
 Express работает на основном компьютере на `localhost:3000`, React — на `localhost:5173`.
 
 ### Настройка и миграция
@@ -298,7 +298,7 @@ Express работает на основном компьютере на `localh
 Для уже существующей базы ЛР6 сначала создайте резервную копию на VM:
 
 ```bash
-pg_dump -W -h 192.168.174.10 -p 5432 -U agromarket_user \
+pg_dump -W -h <VM_HOST> -p 5432 -U <DB_USER> \
   -d agromarket -Fc -f "$HOME/agromarket-before-lab7.dump"
 test -s "$HOME/agromarket-before-lab7.dump"
 pg_restore -l "$HOME/agromarket-before-lab7.dump" >/dev/null
@@ -308,8 +308,8 @@ pg_restore -l "$HOME/agromarket-before-lab7.dump" >/dev/null
 из каталога, куда файл был скопирован на VM:
 
 ```bash
-psql -W -X -v ON_ERROR_STOP=1 -h 192.168.174.10 -p 5432 \
-  -U agromarket_user -d agromarket -f migrate-lab7-users.sql
+psql -W -X -v ON_ERROR_STOP=1 -h <VM_HOST> -p 5432 \
+  -U <DB_USER> -d agromarket -f migrate-lab7-users.sql
 ```
 
 Миграция выполняется в транзакции, создаёт `users` и добавляет необязательный
@@ -451,7 +451,7 @@ frontend также прошли. Изменяющие CRUD-проверки н�
 
 ### Запуск тестов API
 
-Используйте PostgreSQL 16 или новее и создайте отдельную базу данных `agromarket_test`. Скопируйте `.env` в `.env.test`; сохраните существующие адрес VMware, порт, пользователя и пароль, изменив только имя базы данных. Перед сбросом тестовой схемы командой `db:init` тестовая настройка проверяет и заданное имя базы, и значение `current_database()` в PostgreSQL. `db:init` отказывается работать с любой базой, кроме `agromarket_test`. Для этой конфигурации VMware в `pg_hba.conf` также должен быть разрешён доступ `agromarket_user` с хоста Windows (192.168.174.1) к `agromarket_test`; скопируйте существующее правило для рабочей `agromarket`, изменив только имя базы, затем перечитайте конфигурацию PostgreSQL.
+Используйте PostgreSQL 16 или новее и создайте отдельную базу данных `agromarket_test`. Скопируйте `.env` в `.env.test`; сохраните существующие адрес VMware, порт, пользователя и пароль, изменив только имя базы данных. Перед сбросом тестовой схемы командой `db:init` тестовая настройка проверяет и заданное имя базы, и значение `current_database()` в PostgreSQL. `db:init` отказывается работать с любой базой, кроме `agromarket_test`. Для этой конфигурации VMware в `pg_hba.conf` также должен быть разрешён доступ `<DB_USER>` с хоста Windows (<WINDOWS_HOST>) к `agromarket_test`; скопируйте существующее правило для рабочей `agromarket`, изменив только имя базы, затем перечитайте конфигурацию PostgreSQL.
 
 ```bash
 npm ci
@@ -711,3 +711,277 @@ Preview-сайт на отдельную базу ещё не направлен
 Использование отдельной базы Preview-сайтом не настроено; проверка rate limit
 пропущена, холодный старт не измерен, результат упражнения с откатом ещё
 требует подтверждения. Эти ограничения не выдаются за выполненные задания.
+
+# Лабораторная работа №11 — защита backend API
+
+## Архитектура и технологии
+
+Backend — REST API на Node.js 22+, Express 5 и PostgreSQL (`pg`). Маршруты
+разделены по товарам, категориям, заказам и авторизации. Для проверки входных
+данных используется Zod 4, для паролей — bcrypt, для сессии — JWT. Защитные
+middleware подключаются в `app.js`, запуск и проверка обязательной конфигурации
+выполняются через `server.js`.
+
+## Защита HTTP API
+
+- Helmet устанавливает заголовки безопасности и Content Security Policy.
+- CORS сравнивает Origin с точным allowlist. В коде разрешены
+  `https://agromarket-noname523.vercel.app` и `http://localhost:5173`; дополнительные
+  точные Origin можно задать через `CORS_ORIGIN` как список через запятую.
+  Шаблоны вроде `*.vercel.app` не разрешаются. Запросы без Origin продолжают
+  работать, а для постороннего Origin `Access-Control-Allow-Origin` не выдаётся.
+- JSON body ограничен 16 KB; превышение возвращает HTTP 413.
+- `trust proxy` установлен в `1`, чтобы Express правильно определял клиентский IP
+  за одним доверенным reverse proxy.
+- Login и register ограничены десятью запросами за 15 минут на IP. Успешные login
+  не расходуют IP-лимит. Ответы включают стандартные `RateLimit` headers и
+  `Retry-After`. IP-счётчик использует стандартное хранилище express-rate-limit
+  в памяти отдельного процесса; межпроцессный лимит по email обеспечивает
+  PostgreSQL-механизм ниже.
+
+## Zod, общие схемы и mass assignment
+
+Единственный backend-источник схем находится в `shared/schemas/index.js`.
+`middleware/schemas.js` переэкспортирует `registerSchema`, `loginSchema`,
+`productSchema`, `productUpdateSchema`, `idParam` и `orderStatusSchema`; серверная
+проверка остаётся обязательной независимо от клиентской.
+
+Схемы нормализуют email, ограничивают длины строк, проверяют UTF-8 размер пароля
+регистрации (не более 72 байт) и положительную целую цену в диапазоне PostgreSQL
+INTEGER. PATCH без допустимых полей отклоняется. `idParam` используется на
+маршрутах с `/:id`. Неизвестные поля Zod отбрасывает, а роль при регистрации
+задаётся сервером как `user`; клиентское `role: admin` не меняет полномочия.
+Ошибки валидации возвращаются как JSON с `error` и `details` (`field` и `message`).
+
+Frontend получает тот же файл из backend Git-репозитория по закреплённому commit
+SHA `b01cd2adb29e5394e73671dbc2671580a4ea5466`. Скрипт frontend сверяет SHA-256
+`4A97D7D9345B7CFB2FFDA3B7E557D879EB5230C4575D27E2ED68857C0924176F` до записи
+игнорируемого `src/generated/schemas.js`; fallback на `main`/`master` не используется.
+
+## JWT и защита входа по email
+
+API использует Bearer JWT с алгоритмом HS256 и сроком действия `2h`. Секрет JWT
+не используется для учёта попыток входа.
+
+`services/loginAttemptStore.js` хранит только HMAC-SHA-256 идентификатор
+нормализованного email, а не исходный адрес. PostgreSQL резервирует попытки до
+bcrypt и атомарно учитывает их между IP-адресами и экземплярами приложения.
+После десяти неудачных попыток в 15-минутном окне email блокируется на 60 секунд;
+повторные запросы не продлевают блокировку. Успешная авторизация сбрасывает
+счётчик. Для неизвестного email выполняется dummy bcrypt-проверка, а ответы на
+неизвестный адрес и неверный пароль не раскрывают наличие аккаунта. При ошибке
+PostgreSQL login завершается безопасным HTTP 503 без выдачи JWT.
+
+Истечение блокировки и окна учитывается при следующем обращении к email.
+Операция `cleanupExpired()` ограничена по объёму, но периодический вызов
+очистки в приложении пока не настроен; старые неиспользуемые строки могут
+оставаться в таблице до очистки.
+
+## Переменные окружения
+
+Не храните реальные значения в Git и не копируйте production-переменные в
+тестовую конфигурацию.
+
+| Переменная | Назначение и требование |
+|---|---|
+| `DATABASE_URL` | Строка подключения к PostgreSQL. Для тестовых интеграционных запусков используется отдельный `.env.test`. |
+| `JWT_SECRET` | Отдельный секрет подписи JWT длиной не менее 32 символов; шаблон `replace-with-...` приложение отклоняет. |
+| `JWT_EXPIRES_IN` | Должен быть равен `2h`. |
+| `LOGIN_ATTEMPT_SECRET` | Обязательный отдельный HMAC-ключ, минимум 32 UTF-8 байта. Нельзя подменять его `JWT_SECRET`. |
+| `CORS_ORIGIN` | В production обязателен; дополнительные разрешённые Origin задаются точными значениями через запятую. |
+| `NODE_ENV` | `production` для сервиса; `test` для тестового harness и `db:init`. |
+| `PORT` | Необязательный порт HTTP-сервера, по умолчанию `3000`. |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Учетные данные администратора для тестовой инициализации; не публикуйте их. |
+
+Создайте `LOGIN_ATTEMPT_SECRET` криптографически стойким генератором (например,
+`openssl rand -hex 32`) и внесите результат только в локальный секрет-хранилище
+или настройки сервиса. В текущем `.env.example` и `render.yaml` эта переменная
+ещё не объявлена. До запуска backend её необходимо задать в Render и локальном
+окружении; без неё приложение безопасно откажется стартовать.
+
+## Запуск приложения
+
+Требуется Node.js 22 или новее и доступная PostgreSQL. Установите зависимости,
+задайте перечисленные переменные окружения без записи секретов в Git и запустите:
+
+```bash
+npm ci
+npm run dev
+```
+
+Для запуска в production используется `npm start`. Перед производственным
+развёртыванием проверьте, что `LOGIN_ATTEMPT_SECRET` действительно задан в
+настройках Render: наличие записи в README или локальном файле не создаёт его
+в окружении сервиса.
+
+## Тесты и безопасный запуск
+
+### Наборы тестов
+
+- `tests/db-test-init-guard.test.js` проверяет guard с моками: ошибочная БД,
+  адрес, порт, `NODE_ENV` и ошибка SELECT не допускают `DROP`.
+- `tests/login-attempt-store.test.js` — unit-тесты PostgreSQL store с моками;
+  `shared/schemas/tests/schemas.test.js` — общие схемы Zod.
+- `vitest.auth.config.js` запускает Supertest login-route тесты с моками;
+  `vitest.security.config.js` — проверки security middleware, CORS, валидации и
+  IP rate limit. Эти изолированные конфигурации не подключают `globalSetup`.
+- `tests/login-attempt-store.integration.test.js` и
+  `tests/login-route-postgres.integration.test.js` проверяют настоящий store
+  и HTTP login на PostgreSQL. Они допускают только `agromarket_test` на
+  `<VM_HOST>:5432`, проверяют фактический адрес на соединении и меняют
+  только строки своих случайных HMAC-ключей с последующей проверкой очистки.
+- Обычный `npm test` запускает Node.js проверки и основной Vitest набор.
+  `tests/globalSetup.js` перед Vitest вызывает `npm run db:init`, а затем
+  миграцию. `db:init` удаляет и пересоздаёт всю схему `public`, поэтому полный
+  набор допустим только на изолированной, заменяемой тестовой БД. Не запускайте
+  его на базе с нужными данными.
+
+### Проверки без `db:init`
+
+Эти команды не запускают миграции и не подключаются к PostgreSQL:
+
+```bash
+npm run test:node
+node --test tests/db-test-init-guard.test.js
+node --test tests/login-attempt-store.test.js
+node --test shared/schemas/tests/schemas.test.js
+```
+
+Для PowerShell изолированные Vitest suites можно запустить так:
+
+```powershell
+$previousNodeEnv = $env:NODE_ENV
+try {
+  $env:NODE_ENV = 'test'
+  npm run test:vitest -- --config vitest.auth.config.js
+  if ($LASTEXITCODE -ne 0) { throw 'Auth suite failed' }
+  npm run test:vitest -- --config vitest.security.config.js
+  if ($LASTEXITCODE -ne 0) { throw 'Security suite failed' }
+} finally {
+  if ($null -eq $previousNodeEnv) {
+    Remove-Item Env:NODE_ENV -ErrorAction SilentlyContinue
+  } else {
+    $env:NODE_ENV = $previousNodeEnv
+  }
+}
+```
+
+PostgreSQL integration suites требуют включённую VMware и `.env.test` с точной
+целью. Они сами устанавливают `NODE_ENV=test`, повторяют проверку на соединении,
+не запускают `db:init` и не выполняют миграции:
+
+```bash
+node --test tests/login-attempt-store.integration.test.js
+node --test tests/login-route-postgres.integration.test.js
+```
+
+При несовпадении фактических базы, адреса, порта или режима теста integration
+suite останавливается. Не обходите этот guard и не запускайте suites при
+недоступной или неизвестной цели.
+
+> **CI настроен под отдельный режим guard.** `.github/workflows/ci.yml` задаёт
+> собственный PostgreSQL service на `localhost`, `CI=true` и фиксированный
+> `DB_TEST_PORT=5432`. Guard принимает только эту loopback-цель и локальный
+> адрес контейнерного service. После изменения конфигурации GitHub Actions ещё
+> не запускался, поэтому успешный результат CI не заявляется.
+
+Проверка зависимостей не устанавливает и не обновляет пакеты:
+
+```bash
+npm audit
+npm audit --omit=dev
+```
+
+## CI, Dependabot и журнал изменений
+
+GitHub Actions workflow содержит тестовый job и отдельные шаги deployment/smoke.
+Наличие workflow не означает, что текущий CI проходит: см. несовпадение цели БД
+в разделе тестов выше.
+
+В обоих репозиториях локально подготовлены `.github/dependabot.yml` с еженедельными
+npm-группами для development и production зависимостей. Эти файлы ещё не
+опубликованы; Dependabot не применит их в GitHub до публикации. Не включено
+автоматическое слияние. Dependabot Alerts и Dependabot Security Updates включаются
+отдельно в настройках каждого GitHub-репозитория (**Settings → Code security and
+analysis**); их текущее состояние нужно проверить там.
+
+`npm audit` и `npm audit --omit=dev` проверяют lockfile без автоматического
+исправления. История релиза ведётся в `CHANGELOG.md` по Keep a Changelog.
+
+## Бонусные задания ЛР11
+
+### 1. Общие Zod-схемы
+
+**Реализовано:** backend `shared/schemas/index.js` является общим источником
+схем для обоих проектов. Frontend скачивает файл из закреплённого Git-коммита
+`b01cd2adb29e5394e73671dbc2671580a4ea5466`, проверяет SHA-256 перед атомарной
+записью и не использует fallback на ветки `main`/`master`. Backend продолжает
+валидировать запросы независимо от клиента.
+
+**Проверка:** выполнить в backend `node --test shared/schemas/tests/schemas.test.js`;
+в frontend — `npm run schemas:sync` и `node --test scripts/sync-schemas.test.js`.
+Синхронизация завершится ошибкой, если SHA или содержимое не совпадут.
+
+### 2. Account lockout
+
+**Реализовано:** нормализованный email идентифицируется отдельным HMAC-SHA-256
+ключом в PostgreSQL, исходный email в таблице попыток не сохраняется. После
+10 отказов действует блокировка на 60 секунд; общий счётчик и резервации
+защищены от гонок, успешная авторизация сбрасывает счётчик. IP rate limit
+остаётся отдельным слоем защиты.
+
+**Проверка:** запустить `node --test tests/login-attempt-store.test.js`, затем
+при доступной и подтверждённой VMware-цели — оба PostgreSQL integration suites,
+перечисленные выше. Не запускайте их против production.
+
+**Ограничение:** атака с нескольких IP всё ещё может временно блокировать
+известный email; текущая блокировка короткая, но это остаточный DoS-риск.
+
+### 3. Dependabot
+
+**Реализовано:** локальные конфигурации обоих репозиториев задают еженедельные
+npm-обновления и раздельные группы development/production зависимостей.
+Файлы пока не опубликованы и не должны считаться активными настройками GitHub.
+
+**Проверка:** проверить YAML обоих локальных файлов, затем после публикации
+проверить Dependabot version updates и отдельно включить/проверить Dependabot
+Alerts и Security Updates в Settings каждого репозитория. Автослияние не настроено.
+
+### 4. XSS в React
+
+**Реализовано:** название товара отображается React как текст, а не вставляется
+как HTML. В frontend есть регрессионный тест со строкой
+`<img src=x onerror=alert(1)>`; он проверяет отсутствие внедрённого элемента и
+выполнения обработчика. Это frontend-защита, не серверный HTML-rendering.
+
+**Проверка:** в `agromarket-react` выполнить
+`npm exec -- vitest run --config vite.config.js src/components/ProductCard.test.jsx`.
+
+### 5. Changelog
+
+**Реализовано:** оба проекта содержат `CHANGELOG.md` с версией `1.0.0` в формате
+Keep a Changelog.
+
+**Проверка:** открыть `CHANGELOG.md` в backend и frontend и сверить заголовок,
+дату и категории изменений с фактически реализованными функциями.
+
+## Ответы на вопросы ЛР11
+
+1. **Какие угрозы снижаются?** Перебор паролей по IP и email, попытки mass
+   assignment, некорректные и чрезмерно большие JSON-запросы, произвольные
+   браузерные Origin и ошибки валидации, которые иначе дошли бы до SQL. React
+   отдельно защищает отображение пользовательского текста от HTML-инъекций.
+2. **Как работает защита?** Helmet задаёт защитные заголовки; CORS пропускает
+   только точные разрешённые Origin; express-rate-limit считает IP-запросы;
+   PostgreSQL атомарно резервирует login-попытки по HMAC email; Zod проверяет
+   данные до бизнес-логики и SQL.
+3. **Как проверить безопасность?** Использовать изолированные тестовые команды
+   выше, проверить ответы 400/413/429, `RateLimit` и `Retry-After`, а также
+   запускать PostgreSQL integration tests только после подтверждения их target
+   guard. Не использовать production credentials для тестов.
+4. **Как выполнить rollback?** Откатить приложение на предыдущий проверенный
+   deployment через платформу развёртывания. Добавленные таблицы login-attempt
+   не требуют удаления для отката старого приложения. Не удаляйте таблицы и не
+   выполняйте обратный DDL в production без согласованного плана и резервной
+   копии; `db:init` предназначен только для заменяемой тестовой БД и пересоздаёт
+   её схему целиком.

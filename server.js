@@ -2,7 +2,7 @@
 import app from './app.js';
 
 const production = process.env.NODE_ENV === 'production';
-const required = ['DATABASE_URL', 'JWT_SECRET'];
+const required = ['DATABASE_URL', 'JWT_SECRET', 'LOGIN_ATTEMPT_SECRET'];
 if (production) required.push('CORS_ORIGIN');
 const missing = required.filter((key) => !process.env[key]?.trim());
 if (missing.length || (production && process.env.JWT_SECRET.length < 32)) {

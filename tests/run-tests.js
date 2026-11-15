@@ -1,5 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import dotenv from 'dotenv';
+import { randomBytes } from 'node:crypto';
+import { assertTestInitConfiguration } from '../db/test-init-guard.js';
 
 const loaded = dotenv.config({ path: '.env.test', override: true, quiet: true });
 if (loaded.error && loaded.error.code !== 'ENOENT') {
@@ -8,27 +10,20 @@ if (loaded.error && loaded.error.code !== 'ENOENT') {
 }
 
 function assertTestDatabase() {
-  let url;
-  try {
-    if (!process.env.DATABASE_URL) throw new Error();
-    url = new URL(process.env.DATABASE_URL);
-  } catch {
+  if (!process.env.DATABASE_URL) {
     throw new Error('Tests require DATABASE_URL in .env.test for agromarket_test.');
   }
-  const database = decodeURIComponent(url.pathname.slice(1));
-  const vmHost = url.hostname === '192.168.174.10';
-  const ciLoopback = process.env.CI === 'true' && ['localhost', '127.0.0.1', '::1'].includes(url.hostname);
-  if (database !== 'agromarket_test' || !(vmHost || ciLoopback)) {
-    throw new Error('Tests are restricted to agromarket_test on VM 192.168.174.10 (CI may use its isolated local PostgreSQL service).');
-  }
+  assertTestInitConfiguration({ databaseUrl: process.env.DATABASE_URL, nodeEnv: 'test' });
 }
 
 try {
   assertTestDatabase();
   process.env.NODE_ENV = 'test';
+  process.env.LOGIN_ATTEMPT_SECRET = randomBytes(32).toString('hex');
   execFileSync(process.execPath, ['--test',
     'tests/admin-rotation.test.js',
     'tests/auth-boundaries.test.js',
+    'tests/db-test-init-guard.test.js',
     'tests/db-migration-target.test.js',
     'tests/smoke.test.js',
     'tests/lab7-bonuses.test.js'], { stdio: 'inherit', env: process.env });
