@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
 import { productSchema } from '../middleware/schemas.js';
+import { MockPostgres } from './helpers/mockLoginAttemptPostgres.js';
 
 const originalEnv = {
   JWT_SECRET: process.env.JWT_SECRET,
@@ -26,6 +27,7 @@ const adminAuth = `Bearer ${adminToken}`;
 const allowedOrigin = 'https://agromarket-noname523.vercel.app';
 let requestNumber = 0;
 let originalQuery;
+let originalConnect;
 let registeredId = 1;
 let adminPasswordHash;
 let lastRegistrationValues;
@@ -39,6 +41,9 @@ function remoteRequest(appRequest, ip) {
 beforeAll(async () => {
   adminPasswordHash = await bcrypt.hash('security-test-password', 4);
   originalQuery = pool.query;
+  originalConnect = pool.connect;
+  const attemptsDb = new MockPostgres();
+  pool.connect = attemptsDb.connect.bind(attemptsDb);
   pool.query = async (sql, values = []) => {
     if (sql.includes('SELECT id, name, email, role, created_at, password_hash')) {
       if (values[0] === 'admin@test.invalid') {
@@ -66,6 +71,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (originalQuery) pool.query = originalQuery;
+  if (originalConnect) pool.connect = originalConnect;
   for (const [key, value] of Object.entries(originalEnv)) {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
@@ -203,7 +209,7 @@ describe('authentication rate limits', () => {
       }
       for (let attempt = 0; attempt < 10; attempt += 1) {
         const failure = await remoteRequest(request(app).post('/api/auth/login'), ip)
-          .send({ email: 'missing@test.invalid', password: 'wrong-password' });
+          .send({ email: `ip-limit-${attempt}@test.invalid`, password: 'wrong-password' });
         expect(failure.status).toBe(401);
       }
       const limited = await remoteRequest(request(app).post('/api/auth/login'), ip)

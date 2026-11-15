@@ -12,7 +12,7 @@ describe('Login rate limit', () => {
       for (let attempt = 1; attempt <= 10; attempt += 1) {
         const response = await request(app).post('/api/auth/login')
           .set('X-Forwarded-For', ip)
-          .send({ email: 'nobody@test.invalid', password: 'incorrect' });
+          .send({ email: `ip-limit-${attempt}-${crypto.randomUUID()}@test.invalid`, password: 'incorrect' });
         expect(response.status).toBe(401);
       }
       const limited = await request(app).post('/api/auth/login')

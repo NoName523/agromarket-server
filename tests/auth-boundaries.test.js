@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 
 process.env.JWT_SECRET = randomBytes(32).toString('hex');
 process.env.JWT_EXPIRES_IN = '2h';
+process.env.LOGIN_ATTEMPT_SECRET = randomBytes(32).toString('hex');
 
 const { pool } = await import('../db/pool.js');
 const { default: authRouter } = await import('../routes/auth.js');

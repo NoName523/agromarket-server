@@ -3,15 +3,20 @@ import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { MockPostgres } from './helpers/mockLoginAttemptPostgres.js';
 
 process.env.JWT_SECRET = randomBytes(64).toString('base64url');
 process.env.JWT_EXPIRES_IN = '2h';
+process.env.LOGIN_ATTEMPT_SECRET = randomBytes(32).toString('hex');
 
 const { pool } = await import('../db/pool.js');
 const { default: app } = await import('../app.js');
 
 test('бонусы и HTTP-защита работают с моками без PostgreSQL', async () => {
   const originalQuery = pool.query;
+  const originalConnect = pool.connect;
+  const attemptsDb = new MockPostgres();
+  pool.connect = attemptsDb.connect.bind(attemptsDb);
   const originalLog = console.log;
   const logs = [];
   const queries = [];
@@ -103,7 +108,7 @@ test('бонусы и HTTP-защита работают с моками без 
         { email: 'test@example.invalid', password: 'new-pass-123' }))).status, 200);
       for (let attempt = 0; attempt < 10; attempt += 1) {
         assert.equal((await send('/api/auth/login', json('POST',
-          { email: 'test@example.invalid', password: 'wrong' }))).status, 401);
+          { email: `ip-limit-${attempt}@example.invalid`, password: 'wrong' }))).status, 401);
       }
       assert.equal((await send('/api/auth/login', json('POST',
         { email: 'test@example.invalid', password: 'wrong' }))).status, 429);
@@ -116,6 +121,7 @@ test('бонусы и HTTP-защита работают с моками без 
     server.closeAllConnections();
     await new Promise((resolve) => server.close(resolve));
     pool.query = originalQuery;
+    pool.connect = originalConnect;
     console.log = originalLog;
     await pool.end();
   }

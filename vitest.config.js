@@ -15,6 +15,7 @@ export default defineConfig({
       'tests/products.test.js',
       'tests/rate-limit.test.js',
       'tests/security.test.js',
+      'tests/login-route.test.js',
     ],
     env: parsed,
     globalSetup: './tests/globalSetup.js',
