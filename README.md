@@ -12,33 +12,6 @@ npm run dev
 
 React-приложение запускается отдельно из каталога `agromarket-react` командой `npm run dev`.
 
-## Структура проекта
-
-```text
-agromarket-server/
-├── data/
-│   └── db.json
-├── db/
-│   ├── schema.sql
-│   ├── pool.js
-│   ├── seed.js
-│   └── lab6-queries.sql
-├── middleware/
-│   ├── logger.js
-│   ├── validateOrder.js
-│   └── errorHandler.js
-├── routes/
-│   ├── products.js
-│   └── orders.js
-├── postman/
-│   └── agromarket.postman_collection.json
-├── screenshots/
-├── .env.example
-├── server.js
-├── package.json
-└── README.md
-```
-
 ---
 
 ## Лабораторная 5 — сохранённые материалы
