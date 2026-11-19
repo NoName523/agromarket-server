@@ -112,7 +112,7 @@ router.get('/:id', validate(idParam, 'params'), async (req, res) => {
   res.json(rows[0]);
 });
 
-router.post('/', requireAuth, requireRole('admin'), validate(productSchema), async (req, res) => {
+router.post('/', requireAuth, requireRole('admin', 'farmer'), validate(productSchema), async (req, res) => {
   const error = validateProduct(req.body);
   if (error) return res.status(400).json({ error });
 
