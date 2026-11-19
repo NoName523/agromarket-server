@@ -28,7 +28,7 @@ export function requireAuth(req, res, next) {
   const id = typeof payload === 'object' && payload !== null &&
     typeof payload.sub === 'string' ? Number(payload.sub) : NaN;
   if (!Number.isInteger(id) || id < 1 || id > 2147483647 ||
-      !['user', 'admin'].includes(payload.role)) {
+      !['user', 'admin', 'farmer'].includes(payload.role)) {
     return res.status(401).json({ error: 'Недействительный токен' });
   }
   req.user = { id, role: payload.role };
@@ -41,9 +41,9 @@ export function optionalAuth(req, res, next) {
   return requireAuth(req, res, next);
 }
 
-export function requireRole(role) {
+export function requireRole(...roles) {
   return (req, res, next) => {
-    if (req.user?.role !== role) {
+    if (!roles.includes(req.user?.role)) {
       return res.status(403).json({ error: 'Недостаточно прав' });
     }
     next();

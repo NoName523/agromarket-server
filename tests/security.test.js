@@ -24,6 +24,12 @@ const [{ default: app }, { pool }] = await Promise.all([
 const adminToken = jwt.sign({ role: 'admin' }, process.env.JWT_SECRET,
   { subject: '1', expiresIn: '2h' });
 const adminAuth = `Bearer ${adminToken}`;
+const userToken = jwt.sign({ role: 'user' }, process.env.JWT_SECRET,
+  { subject: '2', expiresIn: '2h' });
+const userAuth = `Bearer ${userToken}`;
+const farmerToken = jwt.sign({ role: 'farmer' }, process.env.JWT_SECRET,
+  { subject: '3', expiresIn: '2h' });
+const farmerAuth = `Bearer ${farmerToken}`;
 const allowedOrigin = 'https://agromarket-noname523.vercel.app';
 let requestNumber = 0;
 let originalQuery;
@@ -60,6 +66,11 @@ beforeAll(async () => {
     if (sql.includes('INSERT INTO public.products')) {
       return { rows: [{ id: 1, name: values[0], category: values[1], price: values[2],
         unit: values[3], image: values[4] }] };
+    }
+    if (sql.includes('DELETE FROM public.products')) return { rowCount: 1 };
+    if (sql.includes('SELECT o.*, p.name AS product_name')) return { rows: [] };
+    if (sql.includes('UPDATE public.orders')) {
+      return { rows: [{ id: values[1], status: values[0] }] };
     }
     if (sql.includes('UPDATE public.products')) {
       lastProductUpdate = { sql, values };
@@ -154,6 +165,14 @@ describe('request validation', () => {
     expect(lastRegistrationValues[1]).toBe('mass-assignment@test.invalid');
   });
 
+  it('does not allow public registration to assign the farmer role', async () => {
+    const response = await remoteRequest(request(app).post('/api/auth/register'))
+      .send({ name: 'Buyer', email: 'farmer-role@test.invalid',
+        password: 'password123', role: 'farmer' });
+    expect(response.status).toBe(201);
+    expect(response.body.user.role).toBe('user');
+  });
+
   it('updates only supplied product fields and ignores extra fields', async () => {
     const response = await remoteRequest(request(app).patch('/api/products/1'))
       .set('Authorization', adminAuth)
@@ -162,6 +181,74 @@ describe('request validation', () => {
     expect(lastProductUpdate.sql).toContain('SET name = $1');
     expect(lastProductUpdate.sql).not.toMatch(/role/i);
     expect(lastProductUpdate.values).toEqual(['New name', 1]);
+  });
+});
+
+describe('farmer role access boundaries', () => {
+  it('does not allow a regular user to create a product', async () => {
+    const response = await remoteRequest(request(app).post('/api/products'))
+      .set('Authorization', userAuth)
+      .send({ name: 'User product', price: 100, unit: 'kg' });
+
+    expect(response.status).toBe(403);
+  });
+
+  it('allows a farmer to create a product', async () => {
+    const response = await remoteRequest(request(app).post('/api/products'))
+      .set('Authorization', farmerAuth)
+      .send({ name: 'Farmer product', price: 500, unit: 'kg' });
+
+    expect(response.status).toBe(201);
+    expect(response.body).toMatchObject({ id: 1, name: 'Farmer product', price: 500 });
+  });
+
+  it.each([
+    ['PUT', '/api/products/1', { name: 'Changed product', price: 600, unit: 'kg' }],
+    ['PATCH', '/api/products/1', { price: 600 }],
+    ['DELETE', '/api/products/1'],
+  ])('does not allow a farmer to %s a product', async (method, path, body) => {
+    let productRequest = request(app)[method.toLowerCase()](path)
+      .set('Authorization', farmerAuth);
+    if (body) productRequest = productRequest.send(body);
+
+    expect((await remoteRequest(productRequest)).status).toBe(403);
+  });
+
+  it('does not give a farmer administrative order permissions', async () => {
+    const list = await remoteRequest(request(app).get('/api/orders'))
+      .set('Authorization', farmerAuth);
+    const update = await remoteRequest(request(app).patch('/api/orders/1'))
+      .set('Authorization', farmerAuth)
+      .send({ status: 'processing' });
+
+    expect(list.status).toBe(403);
+    expect(update.status).toBe(403);
+  });
+
+  it('preserves the existing administrator product and order permissions', async () => {
+    const created = await remoteRequest(request(app).post('/api/products'))
+      .set('Authorization', adminAuth)
+      .send({ name: 'Admin product', price: 100, unit: 'kg' });
+    const updated = await remoteRequest(request(app).put('/api/products/1'))
+      .set('Authorization', adminAuth)
+      .send({ name: 'Updated product', price: 200, unit: 'kg' });
+    const patched = await remoteRequest(request(app).patch('/api/products/1'))
+      .set('Authorization', adminAuth)
+      .send({ price: 300 });
+    const deleted = await remoteRequest(request(app).delete('/api/products/1'))
+      .set('Authorization', adminAuth);
+    const orders = await remoteRequest(request(app).get('/api/orders'))
+      .set('Authorization', adminAuth);
+    const updatedOrder = await remoteRequest(request(app).patch('/api/orders/1'))
+      .set('Authorization', adminAuth)
+      .send({ status: 'processing' });
+
+    expect(created.status).toBe(201);
+    expect(updated.status).toBe(200);
+    expect(patched.status).toBe(200);
+    expect(deleted.status).toBe(204);
+    expect(orders.status).toBe(200);
+    expect(updatedOrder.status).toBe(200);
   });
 });
 
