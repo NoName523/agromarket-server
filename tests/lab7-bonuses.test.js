@@ -24,7 +24,7 @@ test('бонусы и HTTP-защита работают с моками без 
   const insertedUserIds = [];
   pool.query = async (sql, values = []) => {
     queries.push({ sql, values });
-    if (sql.includes('INSERT INTO public.order_requests')) {
+    if (sql.includes('INSERT INTO public.orders')) {
       insertedUserIds.push(values[7]);
       return { rows: [{ id: insertedUserIds.length, user_id: values[7],
         delivery_date: null, created_at: null }] };
@@ -77,19 +77,19 @@ test('бонусы и HTTP-защита работают с моками без 
     assert.match(preflight.headers.get('access-control-allow-headers'), /Authorization/i);
     assert.equal((await send('/api/products')).headers.get('x-content-type-options'), 'nosniff');
 
-    const large = await send('/api/orders', json('POST', { comment: 'a'.repeat(17000) }));
+    const large = await send('/api/order-requests', json('POST', { comment: 'a'.repeat(17000) }));
     assert.equal(large.status, 413);
     assert.equal((await large.json()).error, 'Слишком большое тело запроса');
 
-    assert.equal((await send('/api/orders/my')).status, 401);
-    const myOrders = await send('/api/orders/my', { headers: { Authorization: `Bearer ${token}` } });
+    assert.equal((await send('/api/order-requests/my')).status, 401);
+    const myOrders = await send('/api/order-requests/my', { headers: { Authorization: `Bearer ${token}` } });
     assert.equal(myOrders.status, 200);
     assert.deepEqual((await myOrders.json()).map((row) => row.user_id), [2]);
-    assert.equal((await send('/api/orders', json('POST', order))).status, 201);
-    assert.equal((await send('/api/orders', json('POST', order, `Bearer ${token}`))).status, 201);
+    assert.equal((await send('/api/order-requests', json('POST', order))).status, 201);
+    assert.equal((await send('/api/order-requests', json('POST', order, `Bearer ${token}`))).status, 201);
     const beforeInvalid = queries.length;
-    assert.equal((await send('/api/orders', json('POST', order, 'Bearer invalid.jwt.signature'))).status, 401);
-    assert.equal((await send('/api/orders', json('POST', order, 'Basic invalid'))).status, 401);
+    assert.equal((await send('/api/order-requests', json('POST', order, 'Bearer invalid.jwt.signature'))).status, 401);
+    assert.equal((await send('/api/order-requests', json('POST', order, 'Basic invalid'))).status, 401);
     assert.equal(queries.length, beforeInvalid);
     assert.deepEqual(insertedUserIds, [null, 2]);
 

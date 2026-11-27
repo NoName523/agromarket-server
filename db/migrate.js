@@ -41,8 +41,7 @@ const statements = [
   )`,
 ];
 
-// Bootstrap only. Once 013 renames the legacy table, its new orders table is
-// managed exclusively by the numbered migration.
+// The legacy requests table remains available under its original name.
 const legacyOrders = `CREATE TABLE IF NOT EXISTS public.orders (
     id SERIAL PRIMARY KEY,
     product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
@@ -64,8 +63,7 @@ try {
   await client.query('SET LOCAL search_path TO public');
   await client.query('SELECT pg_advisory_xact_lock(130013)');
   for (const statement of statements) await client.query(statement);
-  const legacy = await client.query("SELECT to_regclass('public.order_requests') AS name");
-  if (!legacy.rows[0].name) await client.query(legacyOrders);
+  await client.query(legacyOrders);
   const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
   if (email && password) {

@@ -12,6 +12,7 @@ export default defineConfig({
       'tests/health.test.js',
       'tests/middleware.test.js',
       'tests/orders-my.test.js',
+      'tests/orders-new.test.js',
       'tests/products.test.js',
       'tests/rate-limit.test.js',
       'tests/security.test.js',

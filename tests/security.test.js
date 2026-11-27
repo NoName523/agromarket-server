@@ -69,7 +69,7 @@ beforeAll(async () => {
     }
     if (sql.includes('DELETE FROM public.products')) return { rowCount: 1 };
     if (sql.includes('SELECT o.*, p.name AS product_name')) return { rows: [] };
-    if (sql.includes('UPDATE public.order_requests')) {
+    if (sql.includes('UPDATE public.orders')) {
       return { rows: [{ id: values[1], status: values[0] }] };
     }
     if (sql.includes('UPDATE public.products')) {
@@ -137,7 +137,7 @@ describe('request validation', () => {
     expect(badId.status).toBe(400);
     expect(badId.body.details[0]).toMatchObject({ field: 'id' });
 
-    const emptyPatch = await remoteRequest(request(app).patch('/api/orders/1'))
+    const emptyPatch = await remoteRequest(request(app).patch('/api/order-requests/1'))
       .set('Authorization', adminAuth).send({});
     expect(emptyPatch.status).toBe(400);
     expect(emptyPatch.body.details[0]).toMatchObject({ field: 'status' });
@@ -149,7 +149,7 @@ describe('request validation', () => {
   });
 
   it('rejects JSON bodies larger than 16kb with HTTP 413', async () => {
-    const response = await remoteRequest(request(app).post('/api/orders'))
+    const response = await remoteRequest(request(app).post('/api/order-requests'))
       .set('Content-Type', 'application/json')
       .send({ comment: 'x'.repeat(17 * 1024) });
     expect(response.status).toBe(413);
@@ -215,9 +215,9 @@ describe('farmer role access boundaries', () => {
   });
 
   it('does not give a farmer administrative order permissions', async () => {
-    const list = await remoteRequest(request(app).get('/api/orders'))
+    const list = await remoteRequest(request(app).get('/api/order-requests'))
       .set('Authorization', farmerAuth);
-    const update = await remoteRequest(request(app).patch('/api/orders/1'))
+    const update = await remoteRequest(request(app).patch('/api/order-requests/1'))
       .set('Authorization', farmerAuth)
       .send({ status: 'processing' });
 
@@ -237,9 +237,9 @@ describe('farmer role access boundaries', () => {
       .send({ price: 300 });
     const deleted = await remoteRequest(request(app).delete('/api/products/1'))
       .set('Authorization', adminAuth);
-    const orders = await remoteRequest(request(app).get('/api/orders'))
+    const orders = await remoteRequest(request(app).get('/api/order-requests'))
       .set('Authorization', adminAuth);
-    const updatedOrder = await remoteRequest(request(app).patch('/api/orders/1'))
+    const updatedOrder = await remoteRequest(request(app).patch('/api/order-requests/1'))
       .set('Authorization', adminAuth)
       .send({ status: 'processing' });
 

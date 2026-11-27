@@ -52,14 +52,14 @@ describe('Administrative product access', () => {
 
 describe('Administrative order access', () => {
   it('requires a token and forbids regular users from the admin order list', async () => {
-    expect((await request(app).get('/api/orders')).status).toBe(401);
+    expect((await request(app).get('/api/order-requests')).status).toBe(401);
     const token = await getUserToken();
-    expect((await request(app).get('/api/orders').set('Authorization', `Bearer ${token}`)).status).toBe(403);
+    expect((await request(app).get('/api/order-requests').set('Authorization', `Bearer ${token}`)).status).toBe(403);
   });
 
   it('allows administrators to read the order list', async () => {
     const token = await getAdminToken();
-    const response = await request(app).get('/api/orders').set('Authorization', `Bearer ${token}`);
+    const response = await request(app).get('/api/order-requests').set('Authorization', `Bearer ${token}`);
     expect(response.status).toBe(200);
     expect(Array.isArray(response.body)).toBe(true);
   });

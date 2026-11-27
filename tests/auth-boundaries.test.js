@@ -11,7 +11,7 @@ process.env.LOGIN_ATTEMPT_SECRET = randomBytes(32).toString('hex');
 const { pool } = await import('../db/pool.js');
 const { default: authRouter } = await import('../routes/auth.js');
 const { default: productsRouter } = await import('../routes/products.js');
-const { default: ordersRouter } = await import('../routes/orders.js');
+const { default: ordersRouter } = await import('../routes/order-requests.js');
 const { errorHandler } = await import('../middleware/errorHandler.js');
 
 test('границы доступа работают без обращения к рабочей БД', async () => {
@@ -29,7 +29,7 @@ test('границы доступа работают без обращения �
     if (sql.includes('FROM public.products')) {
       return { rows: [{ id: 1, name: 'Товар' }] };
     }
-    if (sql.includes('FROM public.order_requests')) {
+    if (sql.includes('FROM public.orders')) {
       return { rows: [] };
     }
     if (sql.includes('INSERT INTO public.products')) {
@@ -41,7 +41,7 @@ test('границы доступа работают без обращения �
     if (sql.includes('DELETE FROM public.products')) {
       return { rowCount: 1 };
     }
-    if (sql.includes('UPDATE public.order_requests')) {
+    if (sql.includes('UPDATE public.orders')) {
       return { rows: [{ id: 1, status: 'done', delivery_date: null, created_at: null }] };
     }
     throw new Error('Неожиданный SQL в тесте');
@@ -51,7 +51,7 @@ test('границы доступа работают без обращения �
   app.use(express.json());
   app.use('/api/auth', authRouter);
   app.use('/api/products', productsRouter);
-  app.use('/api/orders', ordersRouter);
+  app.use('/api/order-requests', ordersRouter);
   app.use(errorHandler);
   const server = await new Promise((resolve) => {
     const listener = app.listen(0, '127.0.0.1', () => resolve(listener));
@@ -95,8 +95,8 @@ test('границы доступа работают без обращения �
     assert.equal((await request('/api/products/1', 'PUT', undefined,
       { name: 'Товар', price: 100 })).status, 401);
     assert.equal((await request('/api/products/1', 'DELETE')).status, 401);
-    assert.equal((await request('/api/orders')).status, 401);
-    assert.equal((await request('/api/orders/1', 'PATCH', undefined,
+    assert.equal((await request('/api/order-requests')).status, 401);
+    assert.equal((await request('/api/order-requests/1', 'PATCH', undefined,
       { status: 'done' })).status, 401);
     const denied = await request('/api/products', 'POST', `Bearer ${userToken}`,
       { name: 'Товар', price: 100 });
@@ -105,21 +105,21 @@ test('границы доступа работают без обращения �
     assert.equal((await request('/api/products/1', 'PUT', `Bearer ${userToken}`,
       { name: 'Товар', price: 100 })).status, 403);
     assert.equal((await request('/api/products/1', 'DELETE', `Bearer ${userToken}`)).status, 403);
-    assert.equal((await request('/api/orders', 'GET', `Bearer ${userToken}`)).status, 403);
-    assert.equal((await request('/api/orders/1', 'PATCH', `Bearer ${userToken}`,
+    assert.equal((await request('/api/order-requests', 'GET', `Bearer ${userToken}`)).status, 403);
+    assert.equal((await request('/api/order-requests/1', 'PATCH', `Bearer ${userToken}`,
       { status: 'done' })).status, 403);
     assert.equal(queries.length, beforeDenied);
 
     assert.equal((await request('/api/products')).status, 200);
     assert.equal((await request('/api/products/1')).status, 200);
-    assert.equal((await request('/api/orders', 'POST', undefined, {})).status, 400);
+    assert.equal((await request('/api/order-requests', 'POST', undefined, {})).status, 400);
     assert.equal((await request('/api/products', 'POST', `Bearer ${adminToken}`,
       { name: 'Товар', price: 100 })).status, 201);
     assert.equal((await request('/api/products/1', 'PUT', `Bearer ${adminToken}`,
       { name: 'Товар', price: 100 })).status, 200);
     assert.equal((await request('/api/products/1', 'DELETE', `Bearer ${adminToken}`)).status, 204);
-    assert.equal((await request('/api/orders', 'GET', `Bearer ${adminToken}`)).status, 200);
-    assert.equal((await request('/api/orders/1', 'PATCH', `Bearer ${adminToken}`,
+    assert.equal((await request('/api/order-requests', 'GET', `Bearer ${adminToken}`)).status, 200);
+    assert.equal((await request('/api/order-requests/1', 'PATCH', `Bearer ${adminToken}`,
       { status: 'done' })).status, 200);
   } finally {
     server.closeAllConnections();

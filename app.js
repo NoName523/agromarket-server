@@ -5,6 +5,7 @@ import { pool } from './db/pool.js';
 import productsRouter from './routes/products.js';
 import categoriesRouter from './routes/categories.js';
 import ordersRouter from './routes/orders.js';
+import orderRequestsRouter from './routes/order-requests.js';
 import authRouter from './routes/auth.js';
 import { logger } from './middleware/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -48,6 +49,7 @@ app.get('/api/about', (req, res) => {
 app.use('/api/products', productsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/orders', ordersRouter);
+app.use('/api/order-requests', orderRequestsRouter);
 app.use('/api/auth', authRouter);
 
 app.use((req, res) => {

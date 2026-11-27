@@ -87,5 +87,6 @@ test('orders migration submits 013 as one atomic statement after checking the co
   assert.equal(client.calls.length, 2);
   assert.match(client.calls[0], /current_database\(\)/);
   assert.match(client.calls[1], /DO \$migration\$/);
-  assert.match(client.calls[1], /ALTER TABLE public\.orders RENAME TO order_requests/);
+  assert.match(client.calls[1], /CREATE TABLE public\.purchase_orders/);
+  assert.doesNotMatch(client.calls[1], /ALTER TABLE public\.orders RENAME/);
 });
