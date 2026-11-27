@@ -24,7 +24,7 @@ test('бонусы и HTTP-защита работают с моками без 
   const insertedUserIds = [];
   pool.query = async (sql, values = []) => {
     queries.push({ sql, values });
-    if (sql.includes('INSERT INTO public.orders')) {
+    if (sql.includes('INSERT INTO public.order_requests')) {
       insertedUserIds.push(values[7]);
       return { rows: [{ id: insertedUserIds.length, user_id: values[7],
         delivery_date: null, created_at: null }] };

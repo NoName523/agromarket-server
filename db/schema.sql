@@ -1,5 +1,6 @@
 -- Первичная инициализация: существующие таблицы не удаляем.
 -- Намеренно без DROP и IF NOT EXISTS: повторный запуск должен остановиться.
+-- Базовая схема до 013. db:init применяет 013 в той же транзакции.
 CREATE TABLE public.login_attempts (
   email_key TEXT PRIMARY KEY CHECK (email_key ~ '^[0-9a-f]{64}$'),
   generation UUID NOT NULL,

@@ -3,8 +3,8 @@ import { fileURLToPath } from 'node:url';
 
 const CONFIRMATION = 'I_CONFIRM_PRODUCTION_FARMER_ROLE_MIGRATION';
 
-export function productionFarmerConfig({ databaseUrl, nodeEnv, confirmation, expectedHost, expectedDatabase }) {
-  if (nodeEnv !== 'production' || confirmation !== CONFIRMATION ||
+export function neonMigrationConfig({ databaseUrl, nodeEnv, confirmation, expectedHost, expectedDatabase }, requiredConfirmation) {
+  if (nodeEnv !== 'production' || !requiredConfirmation || confirmation !== requiredConfirmation ||
       typeof expectedHost !== 'string' || typeof expectedDatabase !== 'string') {
     throw new Error('Production target confirmation is required.');
   }
@@ -31,6 +31,10 @@ export function productionFarmerConfig({ databaseUrl, nodeEnv, confirmation, exp
   return { host, port: 5432, database, user, password,
     ssl: { rejectUnauthorized: true }, enableChannelBinding: url.searchParams.get('channel_binding') === 'require',
     max: 1, connectionTimeoutMillis: 10000 };
+}
+
+export function productionFarmerConfig(options) {
+  return neonMigrationConfig(options, CONFIRMATION);
 }
 
 export function trackProductionChannelBinding(client) {

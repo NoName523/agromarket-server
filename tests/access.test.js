@@ -32,13 +32,19 @@ describe('Administrative product access', () => {
   it('allows an administrator to create, update, and delete a product', async () => {
     const auth = `Bearer ${adminToken}`;
     const created = await request(app).post('/api/products').set('Authorization', auth)
-      .send({ name: 'Test Honey', category: 'Honey', price: 2500, unit: 'kg' });
+      .send({ name: 'Test Honey', category: 'Honey', price: 2500, unit: 'kg', stock: 12 });
     expect(created.status).toBe(201);
     const id = created.body.id;
     const updated = await request(app).put(`/api/products/${id}`).set('Authorization', auth)
       .send({ name: 'Test Honey', category: 'Honey', price: 2700, unit: 'kg' });
     expect(updated.status).toBe(200);
     expect(Number(updated.body.price)).toBe(2700);
+    expect(updated.body.stock).toBe(12);
+    expect(updated.body.farmer_id).toBe(created.body.farmer_id);
+    const patched = await request(app).patch(`/api/products/${id}`).set('Authorization', auth)
+      .send({ stock: 0, farmer_id: 999 });
+    expect(patched.status).toBe(200);
+    expect(patched.body).toMatchObject({ stock: 0, farmer_id: created.body.farmer_id });
     expect((await request(app).delete(`/api/products/${id}`).set('Authorization', auth)).status).toBe(204);
     expect((await request(app).get(`/api/products/${id}`)).status).toBe(404);
   });

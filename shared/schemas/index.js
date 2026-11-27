@@ -39,6 +39,10 @@ const productFields = {
   name: z.string().trim().min(1, 'Name is required').max(200, 'Name is too long'),
   category: z.string().trim().max(100, 'Category is too long').nullable().optional(),
   price: priceSchema,
+  stock: z.union([
+    z.number(),
+    z.string().trim().regex(/^\d+$/, 'Stock must be a non-negative whole number').transform(Number),
+  ]).pipe(z.number().int().min(0).max(2147483647)).optional(),
   unit: z.string().trim().min(1, 'Unit is required').max(32, 'Unit is too long').optional(),
   image: z.string().trim().max(2048, 'Image URL is too long').nullable().optional(),
 };

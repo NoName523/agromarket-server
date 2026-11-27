@@ -65,11 +65,11 @@ beforeAll(async () => {
     }
     if (sql.includes('INSERT INTO public.products')) {
       return { rows: [{ id: 1, name: values[0], category: values[1], price: values[2],
-        unit: values[3], image: values[4] }] };
+        unit: values[3], image: values[4], stock: values[5], farmer_id: values[6] }] };
     }
     if (sql.includes('DELETE FROM public.products')) return { rowCount: 1 };
     if (sql.includes('SELECT o.*, p.name AS product_name')) return { rows: [] };
-    if (sql.includes('UPDATE public.orders')) {
+    if (sql.includes('UPDATE public.order_requests')) {
       return { rows: [{ id: values[1], status: values[0] }] };
     }
     if (sql.includes('UPDATE public.products')) {
@@ -196,10 +196,10 @@ describe('farmer role access boundaries', () => {
   it('allows a farmer to create a product', async () => {
     const response = await remoteRequest(request(app).post('/api/products'))
       .set('Authorization', farmerAuth)
-      .send({ name: 'Farmer product', price: 500, unit: 'kg' });
+      .send({ name: 'Farmer product', price: 500, unit: 'kg', stock: '7', farmer_id: 999 });
 
     expect(response.status).toBe(201);
-    expect(response.body).toMatchObject({ id: 1, name: 'Farmer product', price: 500 });
+    expect(response.body).toMatchObject({ id: 1, name: 'Farmer product', price: 500, stock: 7, farmer_id: 3 });
   });
 
   it.each([
@@ -244,6 +244,7 @@ describe('farmer role access boundaries', () => {
       .send({ status: 'processing' });
 
     expect(created.status).toBe(201);
+    expect(created.body).toMatchObject({ stock: 0, farmer_id: 1 });
     expect(updated.status).toBe(200);
     expect(patched.status).toBe(200);
     expect(deleted.status).toBe(204);

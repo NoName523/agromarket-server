@@ -25,6 +25,7 @@ try {
     'tests/auth-boundaries.test.js',
     'tests/db-test-init-guard.test.js',
     'tests/db-migration-target.test.js',
+    'tests/migrate-orders.test.js',
     'tests/smoke.test.js',
     'tests/lab7-bonuses.test.js'], { stdio: 'inherit', env: process.env });
   execFileSync(process.execPath, ['node_modules/vitest/vitest.mjs', 'run'], {

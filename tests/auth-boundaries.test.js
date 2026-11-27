@@ -29,7 +29,7 @@ test('границы доступа работают без обращения �
     if (sql.includes('FROM public.products')) {
       return { rows: [{ id: 1, name: 'Товар' }] };
     }
-    if (sql.includes('FROM public.orders')) {
+    if (sql.includes('FROM public.order_requests')) {
       return { rows: [] };
     }
     if (sql.includes('INSERT INTO public.products')) {
@@ -41,7 +41,7 @@ test('границы доступа работают без обращения �
     if (sql.includes('DELETE FROM public.products')) {
       return { rowCount: 1 };
     }
-    if (sql.includes('UPDATE public.orders')) {
+    if (sql.includes('UPDATE public.order_requests')) {
       return { rows: [{ id: 1, status: 'done', delivery_date: null, created_at: null }] };
     }
     throw new Error('Неожиданный SQL в тесте');

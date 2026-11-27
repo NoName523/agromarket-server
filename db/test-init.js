@@ -2,6 +2,7 @@ import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import { readFile } from 'node:fs/promises';
 import { pool } from './pool.js';
+import { applyOrdersMigration } from './migrate-orders.js';
 import { assertTestInitConfiguration, assertTestInitTarget, dropTestSchemaSafely } from './test-init-guard.js';
 
 let client;
@@ -33,6 +34,7 @@ try {
   await client.query('CREATE SCHEMA public');
   await client.query('SET LOCAL search_path TO public');
   await client.query(schema);
+  await applyOrdersMigration(client);
   for (const product of products) {
     const inferredUnit = product.name.match(/,\s*\d+(?:[.,]\d+)?\s*(кг|л|РєРі|Р»)\s*$/iu)?.[1];
     const unit = product.unit ?? (inferredUnit === 'РєРі' ? 'кг' : inferredUnit === 'Р»' ? 'л' : inferredUnit);

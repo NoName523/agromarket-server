@@ -74,6 +74,20 @@ test('PATCH rejects empty and unknown-only bodies and accepts partial fields', (
   assert.deepEqual(productUpdateSchema.parse({ name: ' Honey ', role: 'admin' }), { name: 'Honey' });
 });
 
+test('stock accepts optional PostgreSQL non-negative integers and strips client ownership', () => {
+  const product = { name: 'Honey', price: 100 };
+  for (const stock of [0, '0', ' 7 ', 2147483647, '2147483647']) {
+    assert.deepEqual(productSchema.parse({ ...product, stock, farmer_id: 999 }),
+      { ...product, stock: Number(stock) });
+  }
+  for (const stock of [-1, 1.5, '1.5', '1e3', '0x10', '', ' ', true, null, 2147483648, '2147483648']) {
+    assert.equal(productSchema.safeParse({ ...product, stock }).success, false);
+    assert.equal(productUpdateSchema.safeParse({ stock }).success, false);
+  }
+  assert.deepEqual(productUpdateSchema.parse({ stock: 0, farmer_id: 999 }), { stock: 0 });
+  assert.equal(productUpdateSchema.safeParse({ farmer_id: 999 }).success, false);
+});
+
 test('product field limits and optional nullable fields are preserved', () => {
   const valid = { name: 'Honey', price: 100, category: null, image: null, unit: 'kg' };
   assert.deepEqual(productSchema.parse(valid), valid);

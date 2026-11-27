@@ -117,9 +117,9 @@ router.post('/', requireAuth, requireRole('admin', 'farmer'), validate(productSc
   if (error) return res.status(400).json({ error });
 
   const { rows } = await pool.query(
-    `INSERT INTO public.products (name, category, price, unit, image)
-     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-    productValues(req.body),
+    `INSERT INTO public.products (name, category, price, unit, image, stock, farmer_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+    [...productValues(req.body), req.body.stock ?? 0, req.user.id],
   );
   res.status(201).json(rows[0]);
 });
@@ -134,9 +134,9 @@ router.put('/:id', validate(idParam, 'params'), requireAuth, requireRole('admin'
 
   const { rows } = await pool.query(
     `UPDATE public.products
-     SET name = $1, category = $2, price = $3, unit = $4, image = $5
-     WHERE id = $6 RETURNING *`,
-    [...productValues(req.body), Number(req.params.id)],
+     SET name = $1, category = $2, price = $3, unit = $4, image = $5, stock = COALESCE($6, stock)
+     WHERE id = $7 RETURNING *`,
+    [...productValues(req.body), req.body.stock ?? null, Number(req.params.id)],
   );
   if (rows.length === 0) return res.status(404).json({ error: 'Товар не найден' });
   res.json(rows[0]);
@@ -144,7 +144,7 @@ router.put('/:id', validate(idParam, 'params'), requireAuth, requireRole('admin'
 
 router.patch('/:id', validate(idParam, 'params'), requireAuth, requireRole('admin'),
   validate(productUpdateSchema), async (req, res) => {
-  const columns = { name: 'name', category: 'category', price: 'price', unit: 'unit', image: 'image' };
+  const columns = { name: 'name', category: 'category', price: 'price', unit: 'unit', image: 'image', stock: 'stock' };
   const entries = Object.entries(req.body);
   const assignments = entries.map(([field], index) => `${columns[field]} = $${index + 1}`);
   const values = entries.map(([field, value]) => field === 'price' ? Number(value) : value);

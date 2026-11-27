@@ -17,7 +17,7 @@ const ORDER_STATUSES = new Set(['new', 'processing', 'done', 'cancelled']);
 router.get('/my', requireAuth, async (req, res) => {
   const { rows } = await pool.query(`
     SELECT o.*, p.name AS product_name
-    FROM public.orders o
+    FROM public.order_requests o
     LEFT JOIN public.products p ON p.id = o.product_id
     WHERE o.user_id = $1
     ORDER BY o.created_at DESC, o.id DESC
@@ -36,7 +36,7 @@ router.get('/', requireAuth, requireRole('admin'), async (req, res) => {
 
   const { rows } = await pool.query(`
     SELECT o.*, p.name AS product_name
-    FROM public.orders o
+    FROM public.order_requests o
     LEFT JOIN public.products p ON p.id = o.product_id
     WHERE ($1::text IS NULL OR o.status = $1)
     ORDER BY o.created_at DESC, o.id DESC
@@ -47,7 +47,7 @@ router.get('/', requireAuth, requireRole('admin'), async (req, res) => {
 router.post('/', optionalAuth, validateOrder, async (req, res) => {
   const { name, email, phone, quantity, date, delivery_date, comment, product_id } = req.body;
   const { rows } = await pool.query(
-    `INSERT INTO public.orders (product_id, name, email, phone, quantity, delivery_date, comment, user_id)
+    `INSERT INTO public.order_requests (product_id, name, email, phone, quantity, delivery_date, comment, user_id)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
     [product_id === undefined || product_id === null || product_id === '' ? null : Number(product_id),
       name, email, phone || null, Number(quantity), (date ?? delivery_date) || null, comment || null,
@@ -68,7 +68,7 @@ router.patch('/:id', validate(idParam, 'params'), requireAuth, requireRole('admi
   }
   // Допустимые значения проверяет CHECK, ошибку 23514 обрабатывает errorHandler.
   const { rows } = await pool.query(
-    'UPDATE public.orders SET status = $1 WHERE id = $2 RETURNING *', [status, id],
+    'UPDATE public.order_requests SET status = $1 WHERE id = $2 RETURNING *', [status, id],
   );
   if (rows.length === 0) return res.status(404).json({ error: 'Заявка не найдена' });
   res.json(serializeOrder(rows[0]));
